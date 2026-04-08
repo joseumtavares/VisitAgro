@@ -1,75 +1,73 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-const jwtSecret = process.env.JWT_SECRET || 'fallback-secret-change-me';
+import { verifyPassword, generateToken } from '@/lib/auth';
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { identifier, password } = body; // Pode ser username ou email
+    const { identifier, password } = await request.json(); // Aceita 'identifier' (username ou email)
 
     if (!identifier || !password) {
       return NextResponse.json({ error: 'Usuário/Email e senha são obrigatórios' }, { status: 400 });
     }
 
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    // IMPORTANTE: Use a SERVICE ROLE KEY aqui para bypass do RLS no login
+    // Isso evita erros de "recursão infinita" ou permissão negada durante a busca do usuário
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!; 
 
-    // Busca verificando tanto username quanto email
-    const { data: users, error } = await supabase
+    if (!supabaseServiceKey) {
+       // Fallback se a chave de serviço não estiver configurada (não recomendado em produção sem RLS correto)
+       console.error("SUPABASE_SERVICE_ROLE_KEY não encontrada. Tentando com chave anônima...");
+    }
+
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
+    });
+
+    // Busca por username OU email
+    const { data: users, error } = await supabaseAdmin
       .from('users')
       .select('*')
       .or(`username.eq.${identifier},email.eq.${identifier}`)
       .eq('active', true)
+      .limit(1)
       .single();
 
     if (error || !users) {
-      console.error('Erro na busca ou usuário não encontrado:', error?.message);
+      console.error('Erro na busca ou usuário não encontrado:', error?.message || 'Usuário não existe');
       return NextResponse.json({ error: 'Credenciais inválidas' }, { status: 401 });
     }
 
-    // Verifica a coluna correta 'pass_hash'
-    const storedHash = users.pass_hash;
+    // Verifica a senha (coluna pass_hash conforme seu schema)
+    // Nota: Se o hash no banco foi gerado com bcrypt, use verifyPassword
+    const validPassword = await verifyPassword(password, users.pass_hash);
     
-    if (!storedHash) {
-      console.error('Usuário encontrado mas sem hash de senha (pass_hash vazio).');
-      return NextResponse.json({ error: 'Erro de configuração do usuário' }, { status: 500 });
-    }
-
-    // Verifica a senha usando bcrypt
-    const isPasswordValid = await bcrypt.compare(password, storedHash);
-
-    if (!isPasswordValid) {
-      console.warn('Senha inválida para usuário:', users.username);
+    if (!validPassword) {
       return NextResponse.json({ error: 'Credenciais inválidas' }, { status: 401 });
     }
 
     // Gera o token JWT
-    const token = jwt.sign(
-      { 
-        id: users.id, 
-        username: users.username, 
-        email: users.email, 
-        role: users.role,
-        workspace: users.workspace 
-      },
-      jwtSecret,
-      { expiresIn: '1h' }
-    );
+    const token = generateToken({
+      id: users.id,
+      username: users.username,
+      email: users.email,
+      role: users.role,
+      workspace: users.workspace
+    });
 
     // Remove dados sensíveis da resposta
-    const { pass_hash, ...userWithoutPassword } = users;
+    const { pass_hash, hash_algo, ...userWithoutPassword } = users;
 
     return NextResponse.json({
       user: userWithoutPassword,
       token
     });
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('Erro interno no login:', error);
-    return NextResponse.json({ error: 'Erro interno no servidor' }, { status: 500 });
+    return NextResponse.json({ error: 'Erro interno no servidor: ' + error.message }, { status: 500 });
   }
 }

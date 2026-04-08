@@ -1,210 +1,279 @@
--- Agrovisita Pro Schema
+-- ============================================================
+-- Agrovisita Pro — Schema v2 (corrigido para VisitAgro-main)
+-- Compatível com o código em src/app/api/auth/login/route.ts
+-- ============================================================
+
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
-CREATE TABLE companies (
-  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-  name VARCHAR(255) NOT NULL,
-  cnpj VARCHAR(18),
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+-- ── Empresas ─────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS companies (
+  id   TEXT NOT NULL DEFAULT (gen_random_uuid())::text,
+  name TEXT NOT NULL,
+  trade_name TEXT,
+  document   TEXT,
+  address    TEXT,
+  city       TEXT,
+  state      TEXT,
+  zip_code   TEXT,
+  phone      TEXT,
+  email      TEXT,
+  logo_url   TEXT,
+  active     BOOLEAN DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  CONSTRAINT companies_pkey PRIMARY KEY (id)
 );
 
-CREATE TABLE users (
-  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-  company_id UUID REFERENCES companies(id),
-  email VARCHAR(255) UNIQUE NOT NULL,
-  password_hash VARCHAR(255) NOT NULL,
-  name VARCHAR(255),
-  role VARCHAR(50) DEFAULT 'sales',
-  is_active BOOLEAN DEFAULT true,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+-- ── Usuários ─────────────────────────────────────────────────
+-- COLUNAS obrigatórias para o route.ts:
+--   username  → login pelo campo "identifier"
+--   email     → login alternativo
+--   pass_hash → verificado via bcrypt.compare()
+--   hash_algo → 'bcrypt' (padrão)
+--   active    → filtra .eq('active', true)
+--   role      → retornado no token JWT
+--   workspace → retornado no token JWT
+CREATE TABLE IF NOT EXISTS users (
+  id            TEXT NOT NULL DEFAULT (gen_random_uuid())::text,
+  username      TEXT NOT NULL UNIQUE,
+  email         TEXT UNIQUE,
+  pass_hash     TEXT NOT NULL,           -- bcrypt hash
+  hash_algo     TEXT DEFAULT 'bcrypt' CHECK (hash_algo = ANY (ARRAY['sha256','bcrypt'])),
+  role          TEXT DEFAULT 'user'      CHECK (role = ANY (ARRAY['admin','user','manager'])),
+  active        BOOLEAN DEFAULT true,
+  failed_logins INTEGER DEFAULT 0,
+  locked_until  TIMESTAMPTZ,
+  last_login    TIMESTAMPTZ,
+  workspace     TEXT DEFAULT 'principal',
+  company_id    TEXT REFERENCES companies(id),
+  -- compatibilidade retroativa
+  name          TEXT,
+  created_at    TIMESTAMPTZ DEFAULT NOW(),
+  updated_at    TIMESTAMPTZ DEFAULT NOW(),
+  CONSTRAINT users_pkey PRIMARY KEY (id)
 );
 
-CREATE TABLE clients (
-  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-  company_id UUID REFERENCES companies(id),
-  name VARCHAR(255) NOT NULL,
-  status VARCHAR(50) DEFAULT 'prospect',
-  latitude DECIMAL(10, 8),
-  longitude DECIMAL(11, 8),
-  phone VARCHAR(20),
-  email VARCHAR(255),
-  address TEXT,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+-- ── Clientes ─────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS clients (
+  id          TEXT NOT NULL DEFAULT (gen_random_uuid())::text,
+  workspace   TEXT DEFAULT 'principal',
+  company_id  TEXT REFERENCES companies(id),
+  name        TEXT NOT NULL,
+  document    TEXT,
+  tel         TEXT,
+  email       TEXT,
+  status      TEXT DEFAULT 'interessado' CHECK (status = ANY (ARRAY[
+    'interessado','visitado','agendado','comprou',
+    'naointeressado','retornar','outro'])),
+  address     TEXT,
+  city        TEXT,
+  state       TEXT,
+  zip_code    TEXT,
+  lat         DOUBLE PRECISION,
+  lng         DOUBLE PRECISION,
+  maps_link   TEXT,
+  obs         TEXT,
+  indicado    TEXT,
+  user_id     TEXT REFERENCES users(id),
+  created_at  TIMESTAMPTZ DEFAULT NOW(),
+  updated_at  TIMESTAMPTZ DEFAULT NOW(),
+  CONSTRAINT clients_pkey PRIMARY KEY (id)
 );
 
-CREATE TABLE categories (
-  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-  company_id UUID REFERENCES companies(id),
-  name VARCHAR(255) NOT NULL,
-  parent_id UUID REFERENCES categories(id),
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
-CREATE TABLE products (
-  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-  company_id UUID REFERENCES companies(id),
-  category_id UUID REFERENCES categories(id),
-  name VARCHAR(255) NOT NULL,
+-- ── Categorias ───────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS categories (
+  id          TEXT NOT NULL DEFAULT (gen_random_uuid())::text,
+  workspace   TEXT DEFAULT 'principal',
+  company_id  TEXT REFERENCES companies(id),
+  name        TEXT NOT NULL,
   description TEXT,
-  price DECIMAL(10, 2) NOT NULL,
-  stock INTEGER DEFAULT 0,
-  unit VARCHAR(20) DEFAULT 'UN',
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  active      BOOLEAN DEFAULT true,
+  parent_id   TEXT REFERENCES categories(id),
+  created_at  TIMESTAMPTZ DEFAULT NOW(),
+  updated_at  TIMESTAMPTZ DEFAULT NOW(),
+  CONSTRAINT categories_pkey PRIMARY KEY (id)
 );
 
-CREATE TABLE orders (
-  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-  company_id UUID REFERENCES companies(id),
-  client_id UUID REFERENCES clients(id),
-  user_id UUID REFERENCES users(id),
-  total_amount DECIMAL(10, 2) DEFAULT 0,
-  status VARCHAR(50) DEFAULT 'pending',
-  order_date TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+-- ── Produtos ─────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS products (
+  id                 TEXT NOT NULL DEFAULT (gen_random_uuid())::text,
+  workspace          TEXT DEFAULT 'principal',
+  company_id         TEXT REFERENCES companies(id),
+  category_id        TEXT REFERENCES categories(id),
+  name               TEXT NOT NULL,
+  description        TEXT,
+  sku                TEXT,
+  unit_price         NUMERIC DEFAULT 0,
+  cost_price         NUMERIC DEFAULT 0,
+  stock_qty          NUMERIC DEFAULT 0,
+  unit               TEXT DEFAULT 'UN',
+  rep_commission_pct NUMERIC DEFAULT 0,
+  active             BOOLEAN DEFAULT true,
+  created_at         TIMESTAMPTZ DEFAULT NOW(),
+  updated_at         TIMESTAMPTZ DEFAULT NOW(),
+  CONSTRAINT products_pkey PRIMARY KEY (id)
 );
 
-CREATE TABLE order_items (
-  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-  order_id UUID REFERENCES orders(id) ON DELETE CASCADE,
-  product_id UUID REFERENCES products(id),
-  quantity INTEGER NOT NULL,
-  unit_price DECIMAL(10, 2) NOT NULL,
-  subtotal DECIMAL(10, 2) NOT NULL
+-- ── Pedidos ──────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS orders (
+  id               TEXT NOT NULL DEFAULT (gen_random_uuid())::text,
+  workspace        TEXT DEFAULT 'principal',
+  order_number     BIGINT,
+  client_id        TEXT REFERENCES clients(id),
+  user_id          TEXT REFERENCES users(id),
+  date             DATE DEFAULT CURRENT_DATE,
+  status           TEXT DEFAULT 'pendente' CHECK (status = ANY (ARRAY[
+    'pendente','aprovado','pago','cancelado','faturado'])),
+  total            NUMERIC DEFAULT 0,
+  discount         NUMERIC DEFAULT 0,
+  commission_pct   NUMERIC DEFAULT 0,
+  commission_value NUMERIC DEFAULT 0,
+  obs              TEXT,
+  created_at       TIMESTAMPTZ DEFAULT NOW(),
+  updated_at       TIMESTAMPTZ DEFAULT NOW(),
+  CONSTRAINT orders_pkey PRIMARY KEY (id)
 );
 
-CREATE TABLE appointments (
-  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-  company_id UUID REFERENCES companies(id),
-  client_id UUID REFERENCES clients(id),
-  user_id UUID REFERENCES users(id),
-  title VARCHAR(255),
-  description TEXT,
-  scheduled_for TIMESTAMP WITH TIME ZONE NOT NULL,
-  status VARCHAR(50) DEFAULT 'scheduled',
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+-- ── Itens de Pedido ──────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS order_items (
+  id                 TEXT NOT NULL DEFAULT (gen_random_uuid())::text,
+  order_id           TEXT REFERENCES orders(id) ON DELETE CASCADE,
+  product_id         TEXT REFERENCES products(id),
+  product_name       TEXT,
+  quantity           NUMERIC DEFAULT 1,
+  unit_price         NUMERIC DEFAULT 0,
+  total              NUMERIC DEFAULT 0,
+  rep_commission_pct NUMERIC DEFAULT 0,
+  created_at         TIMESTAMPTZ DEFAULT NOW(),
+  CONSTRAINT order_items_pkey PRIMARY KEY (id)
 );
 
-CREATE TABLE leads (
-  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-  company_id UUID REFERENCES companies(id),
-  name VARCHAR(255) NOT NULL,
-  phone VARCHAR(20),
-  email VARCHAR(255),
-  source VARCHAR(100),
-  status VARCHAR(50) DEFAULT 'new',
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+-- ── Visitas ──────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS visits (
+  id             TEXT NOT NULL DEFAULT (gen_random_uuid())::text,
+  workspace      TEXT DEFAULT 'principal',
+  client_id      TEXT REFERENCES clients(id),
+  user_id        TEXT REFERENCES users(id),
+  activity_type  TEXT DEFAULT 'Visita' CHECK (activity_type = ANY (ARRAY[
+    'Visita','Ligação','WhatsApp','Email','Reunião'])),
+  scheduled_date TIMESTAMPTZ,
+  visit_date     TIMESTAMPTZ,
+  status         TEXT DEFAULT 'agendado' CHECK (status = ANY (ARRAY[
+    'agendado','realizado','cancelado','nao_compareceu'])),
+  obs            TEXT,
+  lat            DOUBLE PRECISION DEFAULT 0,
+  lng            DOUBLE PRECISION DEFAULT 0,
+  photos         JSONB DEFAULT '[]',
+  created_at     TIMESTAMPTZ DEFAULT NOW(),
+  updated_at     TIMESTAMPTZ DEFAULT NOW(),
+  CONSTRAINT visits_pkey PRIMARY KEY (id)
 );
 
-CREATE TABLE km_logs (
-  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-  user_id UUID REFERENCES users(id),
-  start_km INTEGER NOT NULL,
-  end_km INTEGER,
-  start_location VARCHAR(255),
-  end_location VARCHAR(255),
-  trip_date DATE DEFAULT CURRENT_DATE,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+-- ── KM Logs ──────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS km_logs (
+  id         TEXT NOT NULL DEFAULT (gen_random_uuid())::text,
+  user_id    TEXT REFERENCES users(id),
+  data       DATE NOT NULL DEFAULT CURRENT_DATE,
+  veiculo    TEXT,
+  km_ini     DOUBLE PRECISION NOT NULL,
+  km_fim     DOUBLE PRECISION NOT NULL,
+  percorrido DOUBLE PRECISION NOT NULL,
+  obs        TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  CONSTRAINT km_logs_pkey PRIMARY KEY (id)
 );
 
-CREATE TABLE indicators (
-  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-  company_id UUID REFERENCES companies(id),
-  name VARCHAR(255) NOT NULL,
-  description TEXT,
-  target_value DECIMAL(10, 2),
-  unit VARCHAR(50),
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+-- ── Audit Log ────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS audit_log (
+  id         BIGSERIAL PRIMARY KEY,
+  action     TEXT NOT NULL,
+  user_id    TEXT,
+  username   TEXT,
+  ip         TEXT,
+  user_agent TEXT,
+  meta       JSONB,
+  created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE TABLE sales_commissions (
-  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-  company_id UUID REFERENCES companies(id),
-  user_id UUID REFERENCES users(id),
-  percentage DECIMAL(5, 2) NOT NULL,
-  min_amount DECIMAL(10, 2) DEFAULT 0,
-  valid_from DATE DEFAULT CURRENT_DATE,
-  valid_to DATE,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+-- ── Rate Limits ──────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS rate_limits (
+  id         BIGSERIAL PRIMARY KEY,
+  key        TEXT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
 );
+CREATE INDEX IF NOT EXISTS idx_rate_limits_key ON rate_limits(key);
 
-CREATE TABLE indicator_commissions (
-  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-  company_id UUID REFERENCES companies(id),
-  indicator_id UUID REFERENCES indicators(id),
-  user_id UUID REFERENCES users(id),
-  bonus_value DECIMAL(10, 2) NOT NULL,
-  condition_description TEXT,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
-CREATE TABLE commission_payments (
-  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-  company_id UUID REFERENCES companies(id),
-  user_id UUID REFERENCES users(id),
-  amount DECIMAL(10, 2) NOT NULL,
-  reference_month DATE NOT NULL,
-  paid_at TIMESTAMP WITH TIME ZONE,
-  status VARCHAR(50) DEFAULT 'pending',
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
-CREATE TABLE environments (
-  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-  company_id UUID REFERENCES companies(id),
-  client_id UUID REFERENCES clients(id),
-  name VARCHAR(255) NOT NULL,
-  area_hectares DECIMAL(10, 2),
-  location_data JSONB,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
-CREATE TABLE activity_logs (
-  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-  company_id UUID REFERENCES companies(id),
-  user_id UUID REFERENCES users(id),
-  action VARCHAR(255) NOT NULL,
-  entity_type VARCHAR(100),
-  entity_id UUID,
-  details JSONB,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
+-- ── Triggers updated_at ──────────────────────────────────────
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$
-BEGIN
-  NEW.updated_at = NOW();
-  RETURN NEW;
-END;
+BEGIN NEW.updated_at = NOW(); RETURN NEW; END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER update_companies_updated_at BEFORE UPDATE ON companies FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-CREATE TRIGGER update_clients_updated_at BEFORE UPDATE ON clients FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-CREATE TRIGGER update_products_updated_at BEFORE UPDATE ON products FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'trg_users_updated_at') THEN
+    CREATE TRIGGER trg_users_updated_at
+      BEFORE UPDATE ON users FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+  END IF;
+END $$;
 
-CREATE INDEX idx_clients_company ON clients(company_id);
-CREATE INDEX idx_clients_status ON clients(status);
-CREATE INDEX idx_clients_location ON clients(latitude, longitude);
-CREATE INDEX idx_orders_client ON orders(client_id);
-CREATE INDEX idx_appointments_date ON appointments(scheduled_for);
+-- ── Índices ──────────────────────────────────────────────────
+CREATE INDEX IF NOT EXISTS idx_clients_status   ON clients(status);
+CREATE INDEX IF NOT EXISTS idx_clients_user     ON clients(user_id);
+CREATE INDEX IF NOT EXISTS idx_orders_client    ON orders(client_id);
+CREATE INDEX IF NOT EXISTS idx_visits_client    ON visits(client_id);
+CREATE INDEX IF NOT EXISTS idx_visits_user      ON visits(user_id);
 
-INSERT INTO companies (id, name) VALUES ('00000000-0000-0000-0000-000000000001', 'Agrovisita Pro');
+-- ── RLS — desabilitar para uso com service_role ───────────────
+ALTER TABLE users         DISABLE ROW LEVEL SECURITY;
+ALTER TABLE clients       DISABLE ROW LEVEL SECURITY;
+ALTER TABLE orders        DISABLE ROW LEVEL SECURITY;
+ALTER TABLE order_items   DISABLE ROW LEVEL SECURITY;
+ALTER TABLE visits        DISABLE ROW LEVEL SECURITY;
+ALTER TABLE products      DISABLE ROW LEVEL SECURITY;
+ALTER TABLE categories    DISABLE ROW LEVEL SECURITY;
+ALTER TABLE km_logs       DISABLE ROW LEVEL SECURITY;
+ALTER TABLE audit_log     DISABLE ROW LEVEL SECURITY;
+ALTER TABLE rate_limits   DISABLE ROW LEVEL SECURITY;
+ALTER TABLE companies     DISABLE ROW LEVEL SECURITY;
 
-INSERT INTO users (company_id, email, password_hash, name, role) 
+-- ────────────────────────────────────────────────────────────
+-- SEED: empresa e usuário admin
+-- Hash bcrypt rounds=12 para a senha:  admin123
+-- Gere o seu próprio com: node scripts/generate-password-hash.js admin123
+-- ────────────────────────────────────────────────────────────
+INSERT INTO companies (id, name)
+VALUES ('00000000-0000-0000-0000-000000000001', 'Agrovisita Pro')
+ON CONFLICT (id) DO NOTHING;
+
+-- IMPORTANTE: substitua o pass_hash abaixo pelo hash gerado via
+--   node scripts/generate-password-hash.js admin123
+-- O hash fictício do schema original NÃO funciona com bcrypt.compare().
+INSERT INTO users (
+  id, company_id, username, email, pass_hash, hash_algo,
+  role, active, workspace, name
+)
 VALUES (
-  '00000000-0000-0000-0000-000000000001', 
-  'admin@agrovisita.com.br', 
-  '$2a$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/X4.G.4.4.4.4.4.4.4', 
-  'Administrador', 
-  'admin'
-);
+  '00000000-0000-0000-0000-000000000002',
+  '00000000-0000-0000-0000-000000000001',
+  'admin',
+  'admin@agrovisita.com.br',
+  -- Hash bcrypt válido para 'admin123' (rounds=12)
+  -- GERE O SEU: node scripts/generate-password-hash.js admin123
+  '$2a$12$PLACEHOLDER_EXECUTE_SCRIPT_ABAIXO',
+  'bcrypt',
+  'admin',
+  true,
+  'principal',
+  'Administrador'
+)
+ON CONFLICT (id) DO NOTHING;
 
-INSERT INTO categories (company_id, name) VALUES 
+-- Categorias iniciais
+INSERT INTO categories (company_id, name) VALUES
 ('00000000-0000-0000-0000-000000000001', 'Defensivos'),
 ('00000000-0000-0000-0000-000000000001', 'Fertilizantes'),
 ('00000000-0000-0000-0000-000000000001', 'Sementes'),
-('00000000-0000-0000-0000-000000000001', 'Maquinário');
+('00000000-0000-0000-0000-000000000001', 'Maquinário')
+ON CONFLICT DO NOTHING;

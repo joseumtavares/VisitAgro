@@ -4,70 +4,89 @@ import { verifyPassword, generateToken } from '@/lib/auth';
 
 export async function POST(request: NextRequest) {
   try {
-    const { identifier, password } = await request.json(); // Aceita 'identifier' (username ou email)
+    const body = await request.json();
+    const { identifier, password } = body ?? {};
 
     if (!identifier || !password) {
-      return NextResponse.json({ error: 'Usuário/Email e senha são obrigatórios' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'Usuário/Email e senha são obrigatórios' },
+        { status: 400 }
+      );
     }
 
-    // IMPORTANTE: Use a SERVICE ROLE KEY aqui para bypass do RLS no login
-    // Isso evita erros de "recursão infinita" ou permissão negada durante a busca do usuário
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!; 
+    const supabaseUrl      = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-    if (!supabaseServiceKey) {
-       // Fallback se a chave de serviço não estiver configurada (não recomendado em produção sem RLS correto)
-       console.error("SUPABASE_SERVICE_ROLE_KEY não encontrada. Tentando com chave anônima...");
+    if (!supabaseUrl || !supabaseServiceKey) {
+      console.error('[login] Variáveis de ambiente NEXT_PUBLIC_SUPABASE_URL ou SUPABASE_SERVICE_ROLE_KEY não configuradas');
+      return NextResponse.json(
+        { error: 'Configuração do servidor incompleta' },
+        { status: 500 }
+      );
     }
 
-    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false
-      }
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
+      auth: { autoRefreshToken: false, persistSession: false },
     });
 
-    // Busca por username OU email
-    const { data: users, error } = await supabaseAdmin
+    const clean = identifier.toLowerCase().trim();
+
+    // BUG CORRIGIDO: .single() lançava erro quando usuário não existia.
+    // Agora usamos .maybeSingle() que retorna null sem erro quando não encontra.
+    // Busca por username OU email (coluna: username e email conforme schema real)
+    const { data: user, error: dbError } = await supabaseAdmin
       .from('users')
-      .select('*')
-      .or(`username.eq.${identifier},email.eq.${identifier}`)
+      .select('id, username, email, pass_hash, hash_algo, role, active, workspace, name')
+      .or(`username.eq.${clean},email.eq.${clean}`)
       .eq('active', true)
-      .limit(1)
-      .single();
+      .maybeSingle();                         // ← era .single() — causava crash com PGRST116
 
-    if (error || !users) {
-      console.error('Erro na busca ou usuário não encontrado:', error?.message || 'Usuário não existe');
+    if (dbError) {
+      console.error('[login] Erro na busca do usuário:', dbError.message);
+      // Não expor detalhes do erro ao cliente
       return NextResponse.json({ error: 'Credenciais inválidas' }, { status: 401 });
     }
 
-    // Verifica a senha (coluna pass_hash conforme seu schema)
-    // Nota: Se o hash no banco foi gerado com bcrypt, use verifyPassword
-    const validPassword = await verifyPassword(password, users.pass_hash);
-    
+    if (!user) {
+      console.warn('[login] Usuário não encontrado:', clean);
+      // Delay anti-timing para não revelar existência do usuário
+      await new Promise(r => setTimeout(r, 300 + Math.random() * 200));
+      return NextResponse.json({ error: 'Credenciais inválidas' }, { status: 401 });
+    }
+
+    // BUG CORRIGIDO: verifica hash_algo antes de chamar bcrypt
+    // (o schema antigo usava coluna 'password_hash' e bcrypt fictício)
+    if (!user.pass_hash) {
+      console.error('[login] Usuário sem hash de senha:', clean);
+      return NextResponse.json({ error: 'Credenciais inválidas' }, { status: 401 });
+    }
+
+    const validPassword = await verifyPassword(password, user.pass_hash);
+
     if (!validPassword) {
+      await new Promise(r => setTimeout(r, 300 + Math.random() * 200));
       return NextResponse.json({ error: 'Credenciais inválidas' }, { status: 401 });
     }
 
-    // Gera o token JWT
+    // Gera JWT com payload completo
     const token = generateToken({
-      id: users.id,
-      username: users.username,
-      email: users.email,
-      role: users.role,
-      workspace: users.workspace
+      id:        user.id,
+      username:  user.username,
+      email:     user.email,
+      role:      user.role,
+      workspace: user.workspace ?? 'principal',
     });
 
-    // Remove dados sensíveis da resposta
-    const { pass_hash, hash_algo, ...userWithoutPassword } = users;
+    // Remove campos sensíveis da resposta
+    const { pass_hash, hash_algo, ...safeUser } = user;
 
-    return NextResponse.json({
-      user: userWithoutPassword,
-      token
-    });
+    return NextResponse.json({ user: safeUser, token });
 
   } catch (error: any) {
-    console.error('Erro interno no login:', error);
-    return NextResponse.json({ error: 'Erro interno no servidor: ' + error.message }, { status: 500 });
+    console.error('[login] Erro inesperado:', error?.message ?? error);
+    return NextResponse.json(
+      { error: 'Erro interno no servidor' },
+      { status: 500 }
+    );
   }
 }

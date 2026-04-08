@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAdmin, auditLog } from '@/lib/supabaseAdmin';
-import { generateCommission } from '../../orders/route';
+import { generateCommission } from '@/lib/commissionHelper';
 
 export async function POST(req: NextRequest) {
   const { pin } = await req.json();

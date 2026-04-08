@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAdmin, auditLog } from '@/lib/supabaseAdmin';
-import { generateCommission } from '../route';
+import { generateCommission } from '@/lib/commissionHelper';
 
 export async function GET(_: NextRequest, { params }: { params: { id: string } }) {
   const admin = getAdmin();
@@ -15,18 +15,18 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   const admin = getAdmin();
   const body = await req.json();
 
-  // Busca estado anterior
-  const { data: prev } = await admin.from('orders').select('status,referral_id,commission_value,total,client_id,date,commission_type').eq('id', params.id).single();
+  const { data: prev } = await admin.from('orders')
+    .select('status,referral_id,commission_value,total,client_id,date,commission_type')
+    .eq('id', params.id).single();
 
   const { data: order, error } = await admin.from('orders')
     .update({ ...body, updated_at: new Date().toISOString() })
     .eq('id', params.id).select().single();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  // Gera comissão automaticamente ao marcar como "pago"
   if (prev?.status !== 'pago' && body.status === 'pago' && order.referral_id && Number(order.commission_value) > 0) {
-    // Verifica se comissão já existe para este pedido
-    const { count } = await admin.from('commissions').select('*', { count: 'exact', head: true }).eq('order_id', params.id);
+    const { count } = await admin.from('commissions')
+      .select('*', { count: 'exact', head: true }).eq('order_id', params.id);
     if (!count || count === 0) {
       await generateCommission(admin, order, Number(order.commission_value));
     }

@@ -1,45 +1,78 @@
 // src/lib/auth.ts
-import jwt from 'jsonwebtoken';
-import bcrypt from 'bcryptjs';
+import jwt  from 'jsonwebtoken';
+import crypto from 'crypto';
 
-const JWT_SECRET = process.env.JWT_SECRET;
-const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '28800'; // 8h em segundos
+// bcryptjs é opcional — funciona sem ele se o hash for pbkdf2
+let bcrypt: any = null;
+try { bcrypt = require('bcryptjs'); } catch { /* não instalado ainda */ }
 
-if (!JWT_SECRET && process.env.NODE_ENV === 'production') {
-  throw new Error('JWT_SECRET não configurado. Defina a variável de ambiente.');
-}
+const SECRET     = process.env.JWT_SECRET || 'fallback-TROQUE-EM-PRODUCAO-min-32-chars!!';
+const EXPIRES_IN = parseInt(process.env.JWT_EXPIRES_IN || '28800', 10);
 
-const SECRET = JWT_SECRET || 'fallback-secret-TROQUE-EM-PRODUCAO-use-32-chars-min';
+// ── Hash ──────────────────────────────────────────────────────
 
 export async function hashPassword(password: string): Promise<string> {
-  return bcrypt.hash(password, 12);
+  if (bcrypt) return bcrypt.hash(password, 12);
+  // Fallback PBKDF2 (sem bcryptjs instalado)
+  const salt = crypto.randomBytes(16).toString('hex');
+  const dk   = await pbkdf2Async(password, salt, 100000, 64, 'sha512');
+  return `pbkdf2:sha512:100000:${salt}:${dk.toString('hex')}`;
 }
+
+// ── Verificação — suporta bcrypt E pbkdf2 ────────────────────
 
 export async function verifyPassword(
   password: string,
-  hashedPassword: string
+  stored: string
 ): Promise<boolean> {
-  if (!password || !hashedPassword) return false;
+  if (!password || !stored) return false;
+
   try {
-    return await bcrypt.compare(password, hashedPassword);
+    // Formato PBKDF2: "pbkdf2:sha512:100000:<salt>:<hex>"
+    if (stored.startsWith('pbkdf2:')) {
+      const parts = stored.split(':');
+      // partes: ['pbkdf2', 'sha512', '100000', salt, hash]
+      if (parts.length !== 5) return false;
+      const [, digest, iters, salt, expected] = parts;
+      const dk = await pbkdf2Async(password, salt, parseInt(iters, 10), 64, digest);
+      return crypto.timingSafeEqual(Buffer.from(dk.toString('hex')), Buffer.from(expected));
+    }
+
+    // Formato bcrypt: "$2a$..." ou "$2b$..."
+    if (stored.startsWith('$2')) {
+      if (bcrypt) return bcrypt.compare(password, stored);
+      console.error('[auth] Hash bcrypt encontrado mas bcryptjs não está instalado. Rode npm install.');
+      return false;
+    }
+
+    console.error('[auth] Formato de hash desconhecido:', stored.substring(0, 10));
+    return false;
   } catch (err) {
     console.error('[auth] Erro ao verificar senha:', err);
     return false;
   }
 }
 
+// ── JWT ───────────────────────────────────────────────────────
+
 export function generateToken(payload: Record<string, unknown>): string {
-  // BUG CORRIGIDO: jwt.sign expiresIn aceita número (segundos) ou string como '8h'
-  // Antes: parseInt(JWT_EXPIRES_IN) + 's' → '3600s' (string inválida para jwt)
-  // Agora: parseInt(JWT_EXPIRES_IN) → 3600 (número correto)
-  const expiresIn = parseInt(JWT_EXPIRES_IN, 10) || 28800;
-  return jwt.sign(payload, SECRET, { expiresIn });
+  return jwt.sign(payload, SECRET, { expiresIn: EXPIRES_IN });
 }
 
 export function verifyToken(token: string): Record<string, unknown> | null {
-  try {
-    return jwt.verify(token, SECRET) as Record<string, unknown>;
-  } catch {
-    return null;
-  }
+  try { return jwt.verify(token, SECRET) as Record<string, unknown>; }
+  catch { return null; }
+}
+
+// ── Utilitário ────────────────────────────────────────────────
+
+function pbkdf2Async(
+  password: string, salt: string,
+  iterations: number, keylen: number, digest: string
+): Promise<Buffer> {
+  return new Promise((resolve, reject) =>
+    crypto.pbkdf2(password, salt, iterations, keylen, digest, (err, dk) =>
+      err ? reject(err) : resolve(dk)
+    )
+  );
 }

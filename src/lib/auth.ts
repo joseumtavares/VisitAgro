@@ -1,56 +1,69 @@
 // src/lib/auth.ts
-import jwt  from 'jsonwebtoken';
+import jwt    from 'jsonwebtoken';
 import crypto from 'crypto';
 
-// bcryptjs é opcional — funciona sem ele se o hash for pbkdf2
-let bcrypt: any = null;
-try { bcrypt = require('bcryptjs'); } catch { /* não instalado ainda */ }
+// bcryptjs é carregado dinamicamente se disponível (após npm install)
+let _bcrypt: any = null;
+try { _bcrypt = require('bcryptjs'); } catch { /* não instalado — usa sha256 */ }
 
 const SECRET     = process.env.JWT_SECRET || 'fallback-TROQUE-EM-PRODUCAO-min-32-chars!!';
 const EXPIRES_IN = parseInt(process.env.JWT_EXPIRES_IN || '28800', 10);
 
-// ── Hash ──────────────────────────────────────────────────────
-
-export async function hashPassword(password: string): Promise<string> {
-  if (bcrypt) return bcrypt.hash(password, 12);
-  // Fallback PBKDF2 (sem bcryptjs instalado)
-  const salt = crypto.randomBytes(16).toString('hex');
-  const dk   = await pbkdf2Async(password, salt, 100000, 64, 'sha512');
-  return `pbkdf2:sha512:100000:${salt}:${dk.toString('hex')}`;
-}
-
-// ── Verificação — suporta bcrypt E pbkdf2 ────────────────────
+// ── Verificação de senha — suporta bcrypt E sha256 ────────────
+//
+// Formatos aceitos pelo banco (coluna hash_algo):
+//   'bcrypt' → hash começa com $2a$ ou $2b$  (bcryptjs)
+//   'sha256' → hash formato "sha256:<salt_hex>:<pbkdf2_hex>"
 
 export async function verifyPassword(
-  password: string,
+  plaintext: string,
   stored: string
 ): Promise<boolean> {
-  if (!password || !stored) return false;
+  if (!plaintext || !stored) return false;
 
   try {
-    // Formato PBKDF2: "pbkdf2:sha512:100000:<salt>:<hex>"
-    if (stored.startsWith('pbkdf2:')) {
+    // ── Formato sha256 (gerado pelo script standalone) ───────
+    if (stored.startsWith('sha256:')) {
       const parts = stored.split(':');
-      // partes: ['pbkdf2', 'sha512', '100000', salt, hash]
-      if (parts.length !== 5) return false;
-      const [, digest, iters, salt, expected] = parts;
-      const dk = await pbkdf2Async(password, salt, parseInt(iters, 10), 64, digest);
-      return crypto.timingSafeEqual(Buffer.from(dk.toString('hex')), Buffer.from(expected));
+      if (parts.length !== 3) return false;
+      const [, saltHex, expected] = parts;
+      const saltBytes = Buffer.from(saltHex, 'hex');
+      const dk = await pbkdf2(plaintext, saltBytes, 100000, 32, 'sha256');
+      // timingSafeEqual evita timing attacks
+      const a = Buffer.from(dk.toString('hex'));
+      const b = Buffer.from(expected);
+      if (a.length !== b.length) return false;
+      return crypto.timingSafeEqual(a, b);
     }
 
-    // Formato bcrypt: "$2a$..." ou "$2b$..."
+    // ── Formato bcrypt ($2a$ / $2b$) ─────────────────────────
     if (stored.startsWith('$2')) {
-      if (bcrypt) return bcrypt.compare(password, stored);
-      console.error('[auth] Hash bcrypt encontrado mas bcryptjs não está instalado. Rode npm install.');
+      if (_bcrypt) return _bcrypt.compare(plaintext, stored);
+      console.error('[auth] Hash bcrypt no banco mas bcryptjs não instalado. Execute npm install na raiz do projeto.');
       return false;
     }
 
-    console.error('[auth] Formato de hash desconhecido:', stored.substring(0, 10));
+    console.error('[auth] Formato de hash desconhecido:', stored.slice(0, 15));
     return false;
   } catch (err) {
     console.error('[auth] Erro ao verificar senha:', err);
     return false;
   }
+}
+
+// ── Geração de hash (para novos usuários via API) ─────────────
+
+export async function hashPassword(password: string): Promise<{ hash: string; algo: 'bcrypt' | 'sha256' }> {
+  if (_bcrypt) {
+    return { hash: await _bcrypt.hash(password, 12), algo: 'bcrypt' };
+  }
+  // Fallback sem bcryptjs
+  const saltBytes = crypto.randomBytes(16);
+  const dk = await pbkdf2(password, saltBytes, 100000, 32, 'sha256');
+  return {
+    hash: `sha256:${saltBytes.toString('hex')}:${dk.toString('hex')}`,
+    algo: 'sha256',
+  };
 }
 
 // ── JWT ───────────────────────────────────────────────────────
@@ -66,13 +79,15 @@ export function verifyToken(token: string): Record<string, unknown> | null {
 
 // ── Utilitário ────────────────────────────────────────────────
 
-function pbkdf2Async(
-  password: string, salt: string,
-  iterations: number, keylen: number, digest: string
+function pbkdf2(
+  password: string,
+  salt: Buffer,
+  iterations: number,
+  keylen: number,
+  digest: string
 ): Promise<Buffer> {
   return new Promise((resolve, reject) =>
-    crypto.pbkdf2(password, salt, iterations, keylen, digest, (err, dk) =>
-      err ? reject(err) : resolve(dk)
-    )
+    crypto.pbkdf2(password, salt, iterations, keylen, digest,
+      (err, dk) => err ? reject(err) : resolve(dk))
   );
 }

@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
     // Busca por username OU email (coluna: username e email conforme schema real)
     const { data: user, error: dbError } = await supabaseAdmin
       .from('users')
-      .select('id, username, email, pass_hash, hash_algo, role, active, workspace, name')
+      .select('id, username, email, pass_hash, hash_algo, role, active, workspace')
       .or(`username.eq.${clean},email.eq.${clean}`)
       .eq('active', true)
       .maybeSingle();                         // ← era .single() — causava crash com PGRST116

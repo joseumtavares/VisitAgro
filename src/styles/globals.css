@@ -2,15 +2,20 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Opcional: Importar leaflet css globalmente se preferir */
+/* @import 'leaflet/dist/leaflet.css'; */
+
 body {
-  background-color: #0f172a;
-  color: #f8fafc;
+  background-color: #0f172a; /* dark-900 */
+  color: #f8fafc; /* dark-50 */
 }
 
+/* Leaflet CSS Fix for Dark Mode */
 .leaflet-popup-content-wrapper, .leaflet-popup-tip {
   background: #1e293b;
   color: #f8fafc;
 }
 .leaflet-container {
   background: #0f172a;
+  font-family: inherit; /* Herda a fonte do seu projeto */
 }

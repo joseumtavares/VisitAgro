@@ -1,4 +1,3 @@
-// src/app/auth/login/page.tsx
 'use client';
 
 import { useState } from 'react';
@@ -9,7 +8,7 @@ import { MapPin, Lock, User } from 'lucide-react';
 export default function LoginPage() {
   const router = useRouter();
   const login = useAuthStore((state) => state.login);
-  const [username, setUsername] = useState('');
+  const [identifier, setIdentifier] = useState(''); // Aceita username ou email
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -23,7 +22,7 @@ export default function LoginPage() {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password }),
+        body: JSON.stringify({ identifier, password }),
       });
 
       const data = await res.json();
@@ -63,8 +62,8 @@ export default function LoginPage() {
               <User className="absolute left-3 top-3 w-5 h-5 text-dark-500" />
               <input
                 type="text"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
+                value={identifier}
+                onChange={(e) => setIdentifier(e.target.value)}
                 className="w-full bg-dark-900 border border-dark-700 rounded-lg py-2.5 pl-10 pr-4 text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition"
                 placeholder="admin"
                 required
@@ -97,9 +96,8 @@ export default function LoginPage() {
         </form>
 
         <div className="mt-6 text-center text-xs text-dark-500">
-          <p>Usuário padrão: <strong>admin</strong></p>
-          <p>Senha padrão: <strong>admin123</strong></p>
-          <p className="mt-2 text-yellow-500/80">*Certifique-se de ter criado o usuário no Supabase</p>
+          <p>Usuário: <strong>admin</strong></p>
+          <p>Senha: <strong>admin123</strong></p>
         </div>
       </div>
     </div>

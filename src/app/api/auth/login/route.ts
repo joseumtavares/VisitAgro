@@ -1,72 +1,75 @@
-// src/app/api/auth/login/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
-import { verifyPassword, generateToken } from '@/lib/auth';
+import { createClient } from '@supabase/supabase-js';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+const jwtSecret = process.env.JWT_SECRET || 'fallback-secret-change-me';
 
 export async function POST(request: NextRequest) {
   try {
-    const { username, password } = await request.json();
+    const body = await request.json();
+    const { identifier, password } = body; // Pode ser username ou email
 
-    if (!username || !password) {
-      return NextResponse.json({ error: 'Usuário e senha são obrigatórios' }, { status: 400 });
+    if (!identifier || !password) {
+      return NextResponse.json({ error: 'Usuário/Email e senha são obrigatórios' }, { status: 400 });
     }
 
-    // Busca pelo username (que pode ser o email ou um nome de usuário)
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    // Busca verificando tanto username quanto email
     const { data: users, error } = await supabase
       .from('users')
       .select('*')
-      .eq('username', username)
+      .or(`username.eq.${identifier},email.eq.${identifier}`)
       .eq('active', true)
       .single();
 
-    // Se não achar por username, tenta pelo email caso o usuário tenha digitado o email
-    let user = users;
-    if (!user && username.includes('@')) {
-      const { data: emailUser } = await supabase
-        .from('users')
-        .select('*')
-        .eq('email', username)
-        .eq('active', true)
-        .single();
-      user = emailUser;
-    }
-
-    if (!user) {
+    if (error || !users) {
+      console.error('Erro na busca ou usuário não encontrado:', error?.message);
       return NextResponse.json({ error: 'Credenciais inválidas' }, { status: 401 });
     }
 
-    // Verifica se a conta está bloqueada temporariamente (opcional, baseado no schema)
-    if (user.locked_until && new Date(user.locked_until) > new Date()) {
-      return NextResponse.json({ error: 'Conta temporariamente bloqueada. Tente mais tarde.' }, { status: 403 });
-    }
-
-    const validPassword = await verifyPassword(password, user.pass_hash);
+    // Verifica a coluna correta 'pass_hash'
+    const storedHash = users.pass_hash;
     
-    if (!validPassword) {
-      // Incrementar tentativas falhas poderia ser implementado aqui
+    if (!storedHash) {
+      console.error('Usuário encontrado mas sem hash de senha (pass_hash vazio).');
+      return NextResponse.json({ error: 'Erro de configuração do usuário' }, { status: 500 });
+    }
+
+    // Verifica a senha usando bcrypt
+    const isPasswordValid = await bcrypt.compare(password, storedHash);
+
+    if (!isPasswordValid) {
+      console.warn('Senha inválida para usuário:', users.username);
       return NextResponse.json({ error: 'Credenciais inválidas' }, { status: 401 });
     }
 
-    // Gerar token
-    const token = generateToken({
-      id: user.id,
-      username: user.username,
-      role: user.role,
-      workspace: 'principal' // Default workspace
-    });
+    // Gera o token JWT
+    const token = jwt.sign(
+      { 
+        id: users.id, 
+        username: users.username, 
+        email: users.email, 
+        role: users.role,
+        workspace: users.workspace 
+      },
+      jwtSecret,
+      { expiresIn: '1h' }
+    );
 
-    // Remover hash da resposta
-    const { pass_hash, locked_until, failed_logins, ...userWithoutSensitive } = user;
-
-    // Atualizar último login
-    await supabase.from('users').update({ last_login: new Date().toISOString() }).eq('id', user.id);
+    // Remove dados sensíveis da resposta
+    const { pass_hash, ...userWithoutPassword } = users;
 
     return NextResponse.json({
-      user: userWithoutSensitive,
+      user: userWithoutPassword,
       token
     });
+
   } catch (error) {
-    console.error('Login error:', error);
+    console.error('Erro interno no login:', error);
     return NextResponse.json({ error: 'Erro interno no servidor' }, { status: 500 });
   }
 }

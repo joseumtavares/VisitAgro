@@ -1,14 +1,15 @@
+// src/app/auth/login/page.tsx
 'use client';
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/authStore';
-import { MapPin, Lock, Mail } from 'lucide-react';
+import { MapPin, Lock, User } from 'lucide-react';
 
 export default function LoginPage() {
   const router = useRouter();
   const login = useAuthStore((state) => state.login);
-  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -22,7 +23,7 @@ export default function LoginPage() {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ username, password }),
       });
 
       const data = await res.json();
@@ -57,15 +58,15 @@ export default function LoginPage() {
           )}
 
           <div>
-            <label className="block text-sm font-medium text-dark-300 mb-2">Email</label>
+            <label className="block text-sm font-medium text-dark-300 mb-2">Usuário ou Email</label>
             <div className="relative">
-              <Mail className="absolute left-3 top-3 w-5 h-5 text-dark-500" />
+              <User className="absolute left-3 top-3 w-5 h-5 text-dark-500" />
               <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                type="text"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
                 className="w-full bg-dark-900 border border-dark-700 rounded-lg py-2.5 pl-10 pr-4 text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition"
-                placeholder="admin@agrovisita.com.br"
+                placeholder="admin"
                 required
               />
             </div>
@@ -96,8 +97,9 @@ export default function LoginPage() {
         </form>
 
         <div className="mt-6 text-center text-xs text-dark-500">
-          <p>Usuário padrão: admin@agrovisita.com.br</p>
-          <p>Senha padrão: admin123</p>
+          <p>Usuário padrão: <strong>admin</strong></p>
+          <p>Senha padrão: <strong>admin123</strong></p>
+          <p className="mt-2 text-yellow-500/80">*Certifique-se de ter criado o usuário no Supabase</p>
         </div>
       </div>
     </div>

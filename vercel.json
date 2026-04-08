@@ -1,7 +1,14 @@
 {
-  "region": "sao1",
   "framework": "nextjs",
+  "buildCommand": "next build",
+  "outputDirectory": ".next",
   "installCommand": "npm install",
-  "buildCommand": "npm run build",
-  "devCommand": "npm run dev"
+  "regions": [
+    "gru1"
+  ],
+  "functions": {
+    "pages/api/**/*.js": {
+      "maxDuration": 10
+    }
+  }
 }

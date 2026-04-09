@@ -3,12 +3,8 @@
   "buildCommand": "next build",
   "outputDirectory": ".next",
   "installCommand": "npm install",
-  "regions": [
-    "gru1"
-  ],
+  "regions": ["gru1"],
   "functions": {
-    "pages/api/**/*.js": {
-      "maxDuration": 10
-    }
+    "src/app/api/**/*.ts": { "maxDuration": 15 }
   }
 }

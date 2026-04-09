@@ -39,6 +39,8 @@ export default function ClientsPage() {
   const [saving,setSaving]=useState(false);
   const [error,setError]=useState('');
   const [cepLoading,setCepLoading]=useState(false);
+  const [geoLoading,setGeoLoading]=useState(false);
+  const [geoError,setGeoError]=useState('');
 
   useEffect(()=>{if(!isAuthenticated)router.push('/auth/login');},[isAuthenticated,router]);
 
@@ -49,8 +51,8 @@ export default function ClientsPage() {
   },[]);
   useEffect(()=>{load();},[load]);
 
-  const openNew=()=>{setEditing(null);setForm(EMPTY);setError('');setShowModal(true);};
-  const openEdit=(c:Client)=>{setEditing(c);setForm({...c});setError('');setShowModal(true);};
+  const openNew=()=>{setEditing(null);setForm(EMPTY);setError('');setGeoError('');setShowModal(true);};
+  const openEdit=(c:Client)=>{setEditing(c);setForm({...c});setError('');setGeoError('');setShowModal(true);};
 
   const lookupCep=async()=>{
     const cep=(form.zip_code??'').replace(/\D/g,'');
@@ -194,6 +196,52 @@ export default function ClientsPage() {
                 <div><label className="block text-xs text-dark-400 mb-1">Cidade</label>
                   <input value={form.city??''} onChange={e=>f('city',e.target.value)}
                     className="w-full bg-dark-900 border border-dark-700 rounded-lg px-3 py-2 text-white text-sm outline-none focus:ring-2 focus:ring-primary-500"/></div>
+                <div className="sm:col-span-2">
+                  <label className="block text-xs text-dark-400 mb-1">Buscar Endereço no Mapa <span className="text-dark-500">(Nominatim)</span></label>
+                  <div className="flex gap-2">
+                    <input id="geo-search-input" placeholder="Ex: Araranguá SC, Rua XV de Novembro 100..."
+                      className="flex-1 bg-dark-900 border border-dark-700 rounded-lg px-3 py-2 text-white text-sm outline-none focus:ring-2 focus:ring-primary-500"
+                      onKeyDown={(e)=>{if(e.key==='Enter'){e.preventDefault();(document.getElementById('geo-search-btn') as HTMLButtonElement)?.click();}}}
+                    />
+                    <button id="geo-search-btn" type="button"
+                      onClick={async()=>{
+                        const q=(document.getElementById('geo-search-input') as HTMLInputElement)?.value?.trim();
+                        if(!q||q.length<3)return;
+                        setGeoLoading(true);
+                        try{
+                          const res=await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&limit=1&addressdetails=1`,{headers:{'Accept-Language':'pt-BR,pt'}});
+                          const data=await res.json();
+                          if(data.length>0){
+                            const r=data[0];
+                            const lat=parseFloat(r.lat),lng=parseFloat(r.lon);
+                            const a=r.address||{};
+                            const city=a.city||a.town||a.village||a.municipality||'';
+                            const state=a.state||'';
+                            const road=a.road||'';
+                            setForm(prev=>({...prev,
+                              lat,lng,
+                              maps_link:`https://www.google.com/maps?q=${lat},${lng}`,
+                              city:city||prev.city,
+                              state:state||prev.state,
+                              address:road||prev.address,
+                            }));
+                          }else{setGeoError('Endereço não encontrado. Tente ser mais específico.');}
+                        }catch{setGeoError('Erro ao buscar endereço.');}
+                        finally{setGeoLoading(false);}
+                      }}
+                      disabled={geoLoading}
+                      className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium disabled:opacity-50 whitespace-nowrap">
+                      {geoLoading?'⏳':'📍 Buscar'}
+                    </button>
+                  </div>
+                  {geoError&&<p className="text-red-400 text-xs mt-1">{geoError}</p>}
+                  {form.lat&&form.lng&&(
+                    <p className="text-green-400 text-xs mt-1">✅ Coordenadas: {form.lat?.toFixed(5)}, {form.lng?.toFixed(5)}
+                      <a href={`https://www.google.com/maps?q=${form.lat},${form.lng}`} target="_blank" rel="noopener noreferrer"
+                        className="ml-2 underline text-blue-400">Abrir no Maps</a>
+                    </p>
+                  )}
+                </div>
                 <div><label className="block text-xs text-dark-400 mb-1">Link Google Maps</label>
                   <input value={form.maps_link??''} onChange={e=>f('maps_link',e.target.value)} placeholder="https://maps.google.com/..."
                     className="w-full bg-dark-900 border border-dark-700 rounded-lg px-3 py-2 text-white text-sm outline-none focus:ring-2 focus:ring-primary-500"/></div>

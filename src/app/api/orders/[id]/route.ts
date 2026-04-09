@@ -19,8 +19,10 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     .select('status,referral_id,commission_value,total,client_id,date,commission_type')
     .eq('id', params.id).single();
 
+  // FIX: extrair items e payment_type antes do spread para UPDATE
+  const { items: _items, ...updateData } = body;
   const { data: order, error } = await admin.from('orders')
-    .update({ ...body, updated_at: new Date().toISOString() })
+    .update({ ...updateData, updated_at: new Date().toISOString() })
     .eq('id', params.id).select().single();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 

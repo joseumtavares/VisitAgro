@@ -13,7 +13,7 @@ export async function GET() {
   try {
     const { data, error } = await getAdmin()
       .from('clients')
-      .select('id, name, status, tel, email, lat, lng, address, city, state, workspace, maps_link, obs, created_at')
+      .select('*')
       .order('name');
     if (error) throw error;
     return NextResponse.json({ clients: data ?? [] });

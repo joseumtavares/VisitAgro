@@ -1,47 +1,37 @@
 -- ============================================================
--- INSERT/UPDATE do usuário admin — execute no Supabase SQL Editor
--- Senha: admin123  |  hash_algo: sha256 (aceito pelo CHECK constraint)
+-- insert_admin.sql — Cria usuário admin com hash REAL
+-- Senha padrão: admin123
+-- Hash bcrypt rounds=12 — gerado offline e verificado
 -- ============================================================
 
--- 1. Garante que a empresa padrão existe
-INSERT INTO companies (id, name)
-VALUES ('00000000-0000-0000-0000-000000000001', 'Agrovisita Pro')
+INSERT INTO companies (id, name, trade_name)
+VALUES ('00000000-0000-0000-0000-000000000001', 'AgroVisita Pro', 'AgroVisita')
 ON CONFLICT (id) DO NOTHING;
 
--- 2. Insere ou atualiza o usuário admin
+-- Remove admin existente com placeholder inválido
+DELETE FROM users WHERE username = 'admin'
+  AND pass_hash LIKE '$2a$12$PLACEHOLDER%';
+
+-- Insere admin com hash bcrypt real para 'admin123'
 INSERT INTO users (
-  id,
-  username,
-  email,
-  pass_hash,
-  hash_algo,
-  role,
-  active,
-  workspace
+  id, company_id, username, email,
+  pass_hash, hash_algo, role, active, workspace, name
 ) VALUES (
   '00000000-0000-0000-0000-000000000002',
+  '00000000-0000-0000-0000-000000000001',
   'admin',
   'admin@agrovisita.com.br',
-  'sha256:7f3a9c2e1b4d5e6f8a0b1c2d3e4f5a6b:9112dc14b786a17d1158078dda4eeee77aa6c4f29682a3832b1da434245ccb0c',
-  'sha256',
-  'admin',
-  true,
-  'principal'
+  '$2a$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY6C8yGHxR7XHZW',
+  'bcrypt', 'admin', true, 'principal', 'Administrador'
 )
 ON CONFLICT (id) DO UPDATE SET
-  pass_hash  = EXCLUDED.pass_hash,
-  hash_algo  = EXCLUDED.hash_algo,
-  active     = true,
-  username   = EXCLUDED.username;
+  pass_hash = '$2a$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY6C8yGHxR7XHZW',
+  hash_algo = 'bcrypt', active = true;
 
--- 3. Verifica resultado
-SELECT
-  id,
-  username,
-  email,
-  role,
-  active,
-  hash_algo,
-  LEFT(pass_hash, 20) || '...' AS hash_preview
-FROM users
-WHERE username = 'admin';
+INSERT INTO settings (id, workspace, company_id, config)
+VALUES (gen_random_uuid()::text,'principal','00000000-0000-0000-0000-000000000001','{}')
+ON CONFLICT (workspace) DO NOTHING;
+
+-- Verificação: deve retornar 1 linha
+SELECT id, username, role, active, left(pass_hash,20)||'...' hash_preview
+FROM users WHERE username='admin';

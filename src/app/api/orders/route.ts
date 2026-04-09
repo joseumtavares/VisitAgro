@@ -40,12 +40,19 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  // ── FIX CRÍTICO: extrair 'items' ANTES do spread ────────────────
+  // Se 'items' for incluído no insert de 'orders', o Supabase rejeita:
+  // "could not find the items column of orders in the schema cache"
+  const { items: orderItems, payment_type, ...orderData } = body;
+
   const { data: order, error } = await admin.from('orders')
     .insert([{
-      ...body,
+      ...orderData,          // NÃO inclui 'items'
       id: orderId,
       order_number: orderNumber,
       commission_value: commissionValue,
+      payment_type: payment_type || 'avista',
+      commission_type: orderData.commission_type || 'percent',
       workspace: 'principal',
       created_at: new Date().toISOString(),
     }])
@@ -53,18 +60,19 @@ export async function POST(req: NextRequest) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  if (body.items?.length) {
-    const items = body.items.map((item: any) => ({
+  if (orderItems?.length) {
+    const items = orderItems.map((item: any) => ({
       id: crypto.randomUUID(),
       order_id: orderId,
       product_id: item.product_id || null,
-      product_name: item.product_name,
-      quantity: item.quantity,
-      unit_price: item.unit_price,
-      total: item.quantity * item.unit_price,
-      rep_commission_pct: item.rep_commission_pct ?? 0,
+      product_name: item.product_name || '',
+      quantity: Number(item.quantity) || 1,
+      unit_price: Number(item.unit_price) || 0,
+      total: (Number(item.quantity)||1) * (Number(item.unit_price)||0),
+      rep_commission_pct: Number(item.rep_commission_pct) || 0,
     }));
-    await admin.from('order_items').insert(items);
+    const { error: ie } = await admin.from('order_items').insert(items);
+    if (ie) console.error('[orders] order_items insert error:', ie.message);
   }
 
   if (body.status === 'pago' && body.referral_id && commissionValue > 0) {

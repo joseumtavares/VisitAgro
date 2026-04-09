@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/authStore';
 import DashboardShell from '@/components/layout/DashboardShell';
@@ -21,9 +21,9 @@ export default function MapPage() {
 
 
   useEffect(() => {
-    if (!hydrated) return null;
-    if (!isAuthenticated) { router.push('/auth/login'); return; }
-  }, [isAuthenticated, router]);
+    if (!hydrated) return ; //void, não null
+    if (!isAuthenticated) { router.push('/auth/login'); }
+  }, [hydrated, isAuthenticated, router]);
 
   if (!hydrated || !isAuthenticated) return null;
 

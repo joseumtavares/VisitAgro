@@ -33,8 +33,9 @@ export default function ProductsPage() {
   const [saving, setSaving]     = useState(false);
   const [error, setError]       = useState('');
 
-  useEffect(() => { if (!hydrated) return null;
-    if (!isAuthenticated) { router.push('/auth/login'); return; } }, [isAuthenticated, router]);
+  useEffect(() => { if (!hydrated) return;
+  if (!isAuthenticated) router.push('/auth/login');
+}, [isAuthenticated, hydrated, router]);
 
   const load = useCallback(async () => {
     setLoading(true);

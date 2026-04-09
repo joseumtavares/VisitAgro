@@ -62,7 +62,13 @@ export async function middleware(request: NextRequest) {
     const signingInput = encoder.encode(`${parts[0]}.${parts[1]}`);
     const signature    = base64urlToBytes(parts[2]);
 
-    const valid = await crypto.subtle.verify('HMAC', cryptoKey, signature, signingInput);
+    const valid = await crypto.subtle.verify(
+    'HMAC',
+    cryptoKey,
+    signature.buffer as ArrayBuffer,   // ← cast para ArrayBuffer puro
+    signingInput.buffer as ArrayBuffer  // ← idem
+);
+
     if (!valid) {
       return NextResponse.json({ error: 'Token inválido.' }, { status: 401 });
     }

@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/authStore';
 import DashboardShell from '@/components/layout/DashboardShell';
 import { Plus, Search, ShoppingCart, CheckCircle, XCircle, Clock } from 'lucide-react';
+import { apiFetch } from '@/lib/apiFetch';
 
 type OrderStatus='pendente'|'aprovado'|'pago'|'cancelado'|'faturado';
 interface Order {
@@ -27,6 +28,8 @@ const STATUS_CFG:Record<OrderStatus,{label:string;cls:string;icon:any}>={
 
 export default function SalesPage() {
   const router=useRouter(); const {isAuthenticated}=useAuthStore();
+  const [hydrated, setHydrated] = useState(false);
+  useEffect(() => { setHydrated(true); }, []);
   const [orders,setOrders]=useState<Order[]>([]);
   const [clients,setClients]=useState<Client[]>([]);
   const [products,setProducts]=useState<Product[]>([]);
@@ -39,15 +42,15 @@ export default function SalesPage() {
   const [saving,setSaving]=useState(false);
   const [error,setError]=useState('');
 
-  useEffect(()=>{if(!isAuthenticated)router.push('/auth/login');},[isAuthenticated,router]);
+  useEffect(()=>{if (!hydrated) return; if(!isAuthenticated)router.push('/auth/login');},[isAuthenticated,router]);
 
   const load=useCallback(async()=>{
     setLoading(true);
     const [o,c,p,r]=await Promise.all([
-      fetch('/api/orders').then(x=>x.json()),
-      fetch('/api/clients').then(x=>x.json()),
-      fetch('/api/products').then(x=>x.json()),
-      fetch('/api/referrals').then(x=>x.json()),
+      apiFetch('/api/orders').then(x=>x.json()),
+      apiFetch('/api/clients').then(x=>x.json()),
+      apiFetch('/api/products').then(x=>x.json()),
+      apiFetch('/api/referrals').then(x=>x.json()),
     ]);
     setOrders(o.orders??[]); setClients(c.clients??[]); setProducts(p.products??[]); setReferrals(r.referrals??[]);
     setLoading(false);
@@ -79,7 +82,7 @@ export default function SalesPage() {
     setSaving(true);
     try{
       const payload={...form,total,commission_value:calcCommission()};
-      const r=await fetch('/api/orders',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+      const r=await apiFetch('/api/orders',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
       if(!r.ok){const j=await r.json();throw new Error(j.error);}
       await load(); setShowModal(false);
       setForm({client_id:'',referral_id:'',status:'pendente',payment_type:'avista',date:new Date().toISOString().split('T')[0],obs:'',items:[]});
@@ -87,7 +90,7 @@ export default function SalesPage() {
   };
 
   const changeStatus=async(id:string,status:OrderStatus)=>{
-    await fetch(`/api/orders/${id}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({status})});
+    await apiFetch(`/api/orders/${id}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({status})});
     await load();
   };
 

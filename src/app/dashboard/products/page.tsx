@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/authStore';
 import DashboardShell from '@/components/layout/DashboardShell';
 import { Plus, Search, Package } from 'lucide-react';
+import { apiFetch } from '@/lib/apiFetch';
 
 interface Product {
   id: string; name: string; description?: string | null;
@@ -16,6 +17,13 @@ const EMPTY: Partial<Product> = { name: '', description: '', unit_price: 0, stoc
 export default function ProductsPage() {
   const router = useRouter();
   const { isAuthenticated } = useAuthStore();
+  // ── Hydration guard ───────────────────────────────────────────────────────
+  // Zustand's persist middleware rehydrates from localStorage asynchronously.
+  // Without this guard, isAuthenticated reads as false on first render,
+  // triggering a redirect to /auth/login even for authenticated users.
+  const [hydrated, setHydrated] = useState(false);
+  useEffect(() => { setHydrated(true); }, []);
+
 
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading]   = useState(true);
@@ -25,11 +33,12 @@ export default function ProductsPage() {
   const [saving, setSaving]     = useState(false);
   const [error, setError]       = useState('');
 
-  useEffect(() => { if (!isAuthenticated) router.push('/auth/login'); }, [isAuthenticated, router]);
+  useEffect(() => { if (!hydrated) return null;
+    if (!isAuthenticated) { router.push('/auth/login'); return; } }, [isAuthenticated, router]);
 
   const load = useCallback(async () => {
     setLoading(true);
-    const r = await fetch('/api/products');
+    const r = await apiFetch('/api/products');
     const j = await r.json();
     setProducts(j.products ?? []);
     setLoading(false);
@@ -41,7 +50,7 @@ export default function ProductsPage() {
     if (!form.name?.trim()) { setError('Nome obrigatório'); return; }
     setSaving(true);
     try {
-      const r = await fetch('/api/products', {
+      const r = await apiFetch('/api/products', {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form),
       });
       if (!r.ok) { const j = await r.json(); throw new Error(j.error); }

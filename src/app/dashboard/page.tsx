@@ -6,6 +6,8 @@ import DashboardShell from '@/components/layout/DashboardShell';
 import LeafletProvider from '@/components/map/LeafletProvider';
 import dynamic from 'next/dynamic';
 import { Users, Package, ShoppingCart, DollarSign, UserCheck, MapPin, LogOut } from 'lucide-react';
+import { apiFetch } from '@/lib/apiFetch';
+import Link from 'next/link';
 
 const InteractiveMap = dynamic(() => import('@/components/map/InteractiveMap'), { ssr: false });
 
@@ -17,17 +19,25 @@ interface Stats {
 export default function DashboardPage() {
   const router = useRouter();
   const { isAuthenticated, logout, user } = useAuthStore();
+  // ── Hydration guard ───────────────────────────────────────────────────────
+  // Zustand's persist middleware rehydrates from localStorage asynchronously.
+  // Without this guard, isAuthenticated reads as false on first render,
+  // triggering a redirect to /auth/login even for authenticated users.
+  const [hydrated, setHydrated] = useState(false);
+  useEffect(() => { setHydrated(true); }, []);
+
   const [stats, setStats] = useState<Stats>({ clients:0,products:0,orders:0,commissions:0,referrals:0,pendingCommissions:0,totalSales:0,pendingSales:0 });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!hydrated) return null;
     if (!isAuthenticated) { router.push('/auth/login'); return; }
     Promise.all([
-      fetch('/api/clients').then(r=>r.json()),
-      fetch('/api/products').then(r=>r.json()),
-      fetch('/api/orders').then(r=>r.json()),
-      fetch('/api/commissions').then(r=>r.json()),
-      fetch('/api/referrals').then(r=>r.json()),
+      apiFetch('/api/clients').then(r=>r.json()),
+      apiFetch('/api/products').then(r=>r.json()),
+      apiFetch('/api/orders').then(r=>r.json()),
+      apiFetch('/api/commissions').then(r=>r.json()),
+      apiFetch('/api/referrals').then(r=>r.json()),
     ]).then(([c,p,o,com,ref]) => {
       const orders = o.orders ?? [];
       const commissions = com.commissions ?? [];
@@ -44,7 +54,7 @@ export default function DashboardPage() {
     }).catch(()=>{}).finally(()=>setLoading(false));
   }, [isAuthenticated, router]);
 
-  if (!isAuthenticated) return null;
+  if (!hydrated || !isAuthenticated) return null;
 
   const cards = [
     { label:'Clientes',    value: stats.clients,    sub:'cadastrados',                     icon: Users,       color:'text-primary-400', href:'/dashboard/clients' },
@@ -71,7 +81,7 @@ export default function DashboardPage() {
         {/* Stats grid */}
         <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
           {cards.map(card => (
-            <a key={card.label} href={card.href}
+            <Link key={card.label} href={card.href}
               className="bg-dark-800 p-5 rounded-xl border border-dark-700 hover:border-dark-500 transition-colors block group">
               <div className="flex items-start justify-between">
                 <div className="min-w-0">
@@ -81,7 +91,7 @@ export default function DashboardPage() {
                 </div>
                 <card.icon className={`w-8 h-8 ${card.color} shrink-0 ml-2 group-hover:scale-110 transition-transform`} />
               </div>
-            </a>
+            </Link>
           ))}
         </div>
 
@@ -92,9 +102,9 @@ export default function DashboardPage() {
               <MapPin className="w-5 h-5 text-primary-400"/>
               <h2 className="text-white font-semibold">Mapa Rápido</h2>
             </div>
-            <a href="/dashboard/map" className="text-xs text-primary-400 hover:text-primary-300 transition-colors border border-primary-500/30 px-2 py-1 rounded">
+            <Link href="/dashboard/map" className="text-xs text-primary-400 hover:text-primary-300 transition-colors border border-primary-500/30 px-2 py-1 rounded">
               Ver completo →
-            </a>
+            </Link>
           </div>
           <div style={{ height: 300 }}>
             <LeafletProvider>

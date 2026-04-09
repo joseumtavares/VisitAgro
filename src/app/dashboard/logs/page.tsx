@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/authStore';
 import DashboardShell from '@/components/layout/DashboardShell';
 import { Search, RefreshCw } from 'lucide-react';
+import { apiFetch } from '@/lib/apiFetch';
 
 interface Log {
   id:number; action:string; user_id?:string|null; username?:string|null;
@@ -21,15 +22,17 @@ const ACTION_COLOR=(action:string)=>{
 
 export default function LogsPage() {
   const router=useRouter(); const {isAuthenticated}=useAuthStore();
+  const [hydrated, setHydrated] = useState(false);
+  useEffect(() => { setHydrated(true); }, []);
   const [logs,setLogs]=useState<Log[]>([]);
   const [loading,setLoading]=useState(true);
   const [search,setSearch]=useState('');
 
-  useEffect(()=>{if(!isAuthenticated)router.push('/auth/login');},[isAuthenticated,router]);
+  useEffect(()=>{if (!hydrated) return; if(!isAuthenticated)router.push('/auth/login');},[isAuthenticated,router]);
 
   const load=useCallback(async()=>{
     setLoading(true);
-    const r=await fetch('/api/admin/logs'); const j=await r.json();
+    const r=await apiFetch('/api/admin/logs'); const j=await r.json();
     setLogs(j.logs??[]); setLoading(false);
   },[]);
   useEffect(()=>{load();},[load]);

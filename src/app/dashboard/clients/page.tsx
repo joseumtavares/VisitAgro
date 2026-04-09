@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/authStore';
 import DashboardShell from '@/components/layout/DashboardShell';
 import { Plus, Search, Pencil, Trash2, Phone, Mail, MapPin, ExternalLink } from 'lucide-react';
+import { apiFetch } from '@/lib/apiFetch';
 
 type ClientStatus = 'interessado'|'visitado'|'agendado'|'comprou'|'naointeressado'|'retornar'|'outro';
 interface Client {
@@ -29,6 +30,8 @@ const EMPTY:Partial<Client>={name:'',status:'interessado',category:'geral',tel:'
 
 export default function ClientsPage() {
   const router=useRouter(); const {isAuthenticated}=useAuthStore();
+  const [hydrated, setHydrated] = useState(false);
+  useEffect(() => { setHydrated(true); }, []);
   const [clients,setClients]=useState<Client[]>([]);
   const [loading,setLoading]=useState(true);
   const [search,setSearch]=useState('');
@@ -42,11 +45,11 @@ export default function ClientsPage() {
   const [geoLoading,setGeoLoading]=useState(false);
   const [geoError,setGeoError]=useState('');
 
-  useEffect(()=>{if(!isAuthenticated)router.push('/auth/login');},[isAuthenticated,router]);
+  useEffect(()=>{if (!hydrated) return; if(!isAuthenticated)router.push('/auth/login');},[isAuthenticated,router]);
 
   const load=useCallback(async()=>{
     setLoading(true);
-    const r=await fetch('/api/clients'); const j=await r.json();
+    const r=await apiFetch('/api/clients'); const j=await r.json();
     setClients(j.clients??[]); setLoading(false);
   },[]);
   useEffect(()=>{load();},[load]);
@@ -59,7 +62,7 @@ export default function ClientsPage() {
     if(cep.length!==8){setError('CEP deve ter 8 dígitos');return;}
     setCepLoading(true);
     try{
-      const r=await fetch(`/api/cep/${cep}`); const j=await r.json();
+      const r=await apiFetch(`/api/cep/${cep}`); const j=await r.json();
       if(j.error){setError(j.error);return;}
       setForm(f=>({...f,address:j.address??f.address,city:j.city,state:j.state,zip_code:j.zip_code}));
     }catch{setError('Falha ao buscar CEP');}
@@ -81,7 +84,7 @@ export default function ClientsPage() {
 
   const remove=async(id:string)=>{
     if(!confirm('Remover este cliente?'))return;
-    await fetch(`/api/clients/${id}`,{method:'DELETE'}); await load();
+    await apiFetch(`/api/clients/${id}`,{method:'DELETE'}); await load();
   };
 
   const filtered=clients.filter(c=>{

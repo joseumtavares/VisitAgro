@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import { apiFetch } from '@/lib/apiFetch';
 
 type ClientStatus = 'interessado' | 'visitado' | 'agendado' | 'comprou' | 'naointeressado' | 'retornar' | 'outro';
 
@@ -214,7 +215,7 @@ export default function InteractiveMap({ compact = false }: { compact?: boolean 
   const load = useCallback(async () => {
     try {
       setLoading(true);
-      const r = await fetch('/api/clients');
+      const r = await apiFetch('/api/clients');
       const j = await r.json();
       setClients(j.clients ?? []);
       setRecenterKey(k => k + 1);
@@ -231,7 +232,7 @@ export default function InteractiveMap({ compact = false }: { compact?: boolean 
       const payload = { ...editForm };
       if (!payload.maps_link && payload.lat && payload.lng)
         payload.maps_link = `https://www.google.com/maps?q=${payload.lat},${payload.lng}`;
-      const r = await fetch(`/api/clients/${editingId}`, {
+      const r = await apiFetch(`/api/clients/${editingId}`, {
         method: 'PUT', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
@@ -296,6 +297,7 @@ export default function InteractiveMap({ compact = false }: { compact?: boolean 
       {/* Mapa */}
       <div style={{ flex: 1, borderRadius: 10, overflow: 'hidden', position: 'relative', minHeight: compact ? 240 : 520 }}>
         <MapContainer
+          key="main-map"
           center={SC_CENTER} zoom={compact ? 7 : 9}
           style={{ height: '100%', width: '100%' }}
           scrollWheelZoom={!compact}

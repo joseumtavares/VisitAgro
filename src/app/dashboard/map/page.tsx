@@ -12,12 +12,20 @@ const InteractiveMap = dynamic(() => import('@/components/map/InteractiveMap'), 
 export default function MapPage() {
   const router = useRouter();
   const { isAuthenticated } = useAuthStore();
+  // ── Hydration guard ───────────────────────────────────────────────────────
+  // Zustand's persist middleware rehydrates from localStorage asynchronously.
+  // Without this guard, isAuthenticated reads as false on first render,
+  // triggering a redirect to /auth/login even for authenticated users.
+  const [hydrated, setHydrated] = useState(false);
+  useEffect(() => { setHydrated(true); }, []);
+
 
   useEffect(() => {
-    if (!isAuthenticated) router.push('/auth/login');
+    if (!hydrated) return null;
+    if (!isAuthenticated) { router.push('/auth/login'); return; }
   }, [isAuthenticated, router]);
 
-  if (!isAuthenticated) return null;
+  if (!hydrated || !isAuthenticated) return null;
 
   return (
     <DashboardShell>

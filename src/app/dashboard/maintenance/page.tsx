@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/authStore';
 import DashboardShell from '@/components/layout/DashboardShell';
 import { Shield, RefreshCw, Trash2, Lock, AlertTriangle, CheckCircle } from 'lucide-react';
+import { apiFetch } from '@/lib/apiFetch';
 
 const CLEANUP_GROUPS=[
   {key:'clients',    label:'Clientes',    desc:'Remove todos os clientes cadastrados',     color:'text-orange-400'},
@@ -16,6 +17,8 @@ const CLEANUP_GROUPS=[
 
 export default function MaintenancePage() {
   const router=useRouter(); const {isAuthenticated}=useAuthStore();
+  const [hydrated, setHydrated] = useState(false);
+  useEffect(() => { setHydrated(true); }, []);
   const [pin,setPin]=useState('');
   const [newPin,setNewPin]=useState('');
   const [confirmPin,setConfirmPin]=useState('');
@@ -29,7 +32,7 @@ export default function MaintenancePage() {
   const [cleaning,setCleaning]=useState(false);
   const [cleanupResult,setCleanupResult]=useState<any>(null);
 
-  useEffect(()=>{if(!isAuthenticated)router.push('/auth/login');},[isAuthenticated,router]);
+  useEffect(()=>{if (!hydrated) return; if(!isAuthenticated)router.push('/auth/login');},[isAuthenticated,router]);
 
   const savePin=async()=>{
     if(newPin.length<4){setPinMsg('PIN deve ter pelo menos 4 dígitos');return;}
@@ -40,7 +43,7 @@ export default function MaintenancePage() {
       const enc=new TextEncoder().encode(newPin);
       const buf=await crypto.subtle.digest('SHA-256',enc);
       const hash=Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
-      const r=await fetch('/api/admin/pin',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pin_hash:hash})});
+      const r=await apiFetch('/api/admin/pin',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pin_hash:hash})});
       const j=await r.json();
       if(!r.ok)throw new Error(j.error);
       setPinMsg('✅ PIN configurado com sucesso!');
@@ -54,7 +57,7 @@ export default function MaintenancePage() {
     if(!confirm('Reprocessar todas as comissões pendentes?'))return;
     setReprocessing(true); setReprocessResult(null);
     try{
-      const r=await fetch('/api/admin/reprocess',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pin:reprocessPin})});
+      const r=await apiFetch('/api/admin/reprocess',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pin:reprocessPin})});
       const j=await r.json();
       if(!r.ok)throw new Error(j.error);
       setReprocessResult(j);
@@ -69,7 +72,7 @@ export default function MaintenancePage() {
     if(!confirm(`⚠️ ATENÇÃO: Isso irá remover permanentemente: ${grp?.desc}\n\nTem certeza absoluta?`))return;
     setCleaning(true); setCleanupResult(null);
     try{
-      const r=await fetch('/api/admin/cleanup',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pin:cleanupPin,group:cleanupGroup})});
+      const r=await apiFetch('/api/admin/cleanup',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pin:cleanupPin,group:cleanupGroup})});
       const j=await r.json();
       if(!r.ok)throw new Error(j.error);
       setCleanupResult(j);

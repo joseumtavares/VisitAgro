@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/authStore';
 import DashboardShell from '@/components/layout/DashboardShell';
 import { Search, CheckCircle, Clock, DollarSign } from 'lucide-react';
+import { apiFetch } from '@/lib/apiFetch';
 
 interface Commission {
   id:string; referral_name?:string|null; client_name?:string|null;
@@ -20,24 +21,26 @@ const STATUS_CFG={
 
 export default function CommissionsPage() {
   const router=useRouter(); const {isAuthenticated}=useAuthStore();
+  const [hydrated, setHydrated] = useState(false);
+  useEffect(() => { setHydrated(true); }, []);
   const [commissions,setCommissions]=useState<Commission[]>([]);
   const [loading,setLoading]=useState(true);
   const [search,setSearch]=useState('');
   const [filterStatus,setFilter]=useState<'todos'|'pendente'|'paga'|'cancelada'>('todos');
   const [confirming,setConfirming]=useState<string|null>(null);
 
-  useEffect(()=>{if(!isAuthenticated)router.push('/auth/login');},[isAuthenticated,router]);
+  useEffect(()=>{if (!hydrated) return; if(!isAuthenticated)router.push('/auth/login');},[isAuthenticated,router]);
 
   const load=useCallback(async()=>{
     setLoading(true);
-    const r=await fetch('/api/commissions'); const j=await r.json();
+    const r=await apiFetch('/api/commissions'); const j=await r.json();
     setCommissions(j.commissions??[]); setLoading(false);
   },[]);
   useEffect(()=>{load();},[load]);
 
   const confirmPayment=async(id:string)=>{
     setConfirming(id);
-    await fetch(`/api/commissions/${id}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({status:'paga'})});
+    await apiFetch(`/api/commissions/${id}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({status:'paga'})});
     await load(); setConfirming(null);
   };
 

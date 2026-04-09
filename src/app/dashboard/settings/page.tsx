@@ -16,6 +16,8 @@ function FToast({msg,type}:{msg:string;type:'success'|'error'}) {
 export default function SettingsPage() {
   const router=useRouter();
   const {isAuthenticated,user,token}=useAuthStore();
+  const [hydrated, setHydrated] = useState(false);
+  useEffect(() => { setHydrated(true); }, []);
   const [company,setCompany]=useState<Partial<Company>>({});
   const [companyId,setCompanyId]=useState<string|null>(null);
   const [loadingCo,setLoadingCo]=useState(true);
@@ -24,7 +26,7 @@ export default function SettingsPage() {
   const [savingPw,setSavingPw]=useState(false);
   const [toast,setToast]=useState<{msg:string;type:'success'|'error'}|null>(null);
 
-  useEffect(()=>{if(!isAuthenticated)router.push('/auth/login');},[isAuthenticated,router]);
+  useEffect(()=>{if (!hydrated) return; if(!isAuthenticated)router.push('/auth/login');},[isAuthenticated,router]);
 
   const showToast=(msg:string,type:'success'|'error'='success')=>{
     setToast({msg,type});setTimeout(()=>setToast(null),3500);
@@ -68,7 +70,7 @@ export default function SettingsPage() {
 
   const cf=(k:keyof Company,v:string)=>setCompany(p=>({...p,[k]:v}));
   const u=user as any;
-  if(!isAuthenticated)return null;
+  if (!hydrated || !isAuthenticated) return null;
 
   const input=(val:string,onChange:(v:string)=>void,placeholder='',type='text')=>(
     <input type={type} value={val} onChange={e=>onChange(e.target.value)} placeholder={placeholder}

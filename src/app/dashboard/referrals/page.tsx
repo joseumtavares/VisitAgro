@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/authStore';
 import DashboardShell from '@/components/layout/DashboardShell';
 import { Plus, Search, Pencil, Trash2, Percent, DollarSign } from 'lucide-react';
+import { apiFetch } from '@/lib/apiFetch';
 
 interface Referral {
   id:string; name:string; document?:string|null; tel?:string|null; email?:string|null;
@@ -15,6 +16,8 @@ const EMPTY:Partial<Referral>={name:'',document:'',tel:'',email:'',commission_ty
 
 export default function ReferralsPage() {
   const router=useRouter(); const {isAuthenticated}=useAuthStore();
+  const [hydrated, setHydrated] = useState(false);
+  useEffect(() => { setHydrated(true); }, []);
   const [referrals,setReferrals]=useState<Referral[]>([]);
   const [loading,setLoading]=useState(true);
   const [search,setSearch]=useState('');
@@ -24,10 +27,10 @@ export default function ReferralsPage() {
   const [saving,setSaving]=useState(false);
   const [error,setError]=useState('');
 
-  useEffect(()=>{if(!isAuthenticated)router.push('/auth/login');},[isAuthenticated,router]);
+  useEffect(()=>{if (!hydrated) return; if(!isAuthenticated)router.push('/auth/login');},[isAuthenticated,router]);
   const load=useCallback(async()=>{
     setLoading(true);
-    const r=await fetch('/api/referrals'); const j=await r.json();
+    const r=await apiFetch('/api/referrals'); const j=await r.json();
     setReferrals(j.referrals??[]); setLoading(false);
   },[]);
   useEffect(()=>{load();},[load]);
@@ -47,7 +50,7 @@ export default function ReferralsPage() {
   };
   const remove=async(id:string)=>{
     if(!confirm('Remover este indicador?'))return;
-    await fetch(`/api/referrals/${id}`,{method:'DELETE'}); await load();
+    await apiFetch(`/api/referrals/${id}`,{method:'DELETE'}); await load();
   };
   const filtered=referrals.filter(r=>r.name.toLowerCase().includes(search.toLowerCase())||r.tel?.includes(search));
   const f=(k:keyof Referral,v:any)=>setForm(p=>({...p,[k]:v}));

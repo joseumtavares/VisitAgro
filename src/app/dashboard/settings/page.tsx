@@ -70,7 +70,7 @@ export default function SettingsPage() {
 
   const cf=(k:keyof Company,v:string)=>setCompany(p=>({...p,[k]:v}));
   const u=user as any;
-  if (!hydrated || !isAuthenticated) return null;
+  if (!hydrated || !isAuthenticated) return ;
 
   const input=(val:string,onChange:(v:string)=>void,placeholder='',type='text')=>(
     <input type={type} value={val} onChange={e=>onChange(e.target.value)} placeholder={placeholder}

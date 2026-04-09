@@ -30,7 +30,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!hydrated) return null;
+    if (!hydrated) return;       // ← void, não null
     if (!isAuthenticated) { router.push('/auth/login'); return; }
     Promise.all([
       apiFetch('/api/clients').then(r=>r.json()),
@@ -54,7 +54,7 @@ export default function DashboardPage() {
     }).catch(()=>{}).finally(()=>setLoading(false));
   }, [isAuthenticated, router]);
 
-  if (!hydrated || !isAuthenticated) return null;
+  if (!hydrated || !isAuthenticated) return ;
 
   const cards = [
     { label:'Clientes',    value: stats.clients,    sub:'cadastrados',                     icon: Users,       color:'text-primary-400', href:'/dashboard/clients' },

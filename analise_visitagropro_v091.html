@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VisitAgroPro v0.9.1 — Análise Técnica de Deploy</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Courier New', monospace; background: #0d1117; color: #c9d1d9; line-height: 1.7; font-size: 14px; }
+  .header { background: #161b22; border-bottom: 1px solid #30363d; padding: 32px 48px; }
+  .header h1 { font-size: 22px; color: #f0f6fc; letter-spacing: -0.5px; font-weight: 700; }
+  .header .meta { color: #8b949e; font-size: 12px; margin-top: 6px; }
+  .header .badge { display: inline-block; background: #da3633; color: #fff; font-size: 11px; padding: 2px 10px; border-radius: 12px; margin-right: 8px; font-weight: 600; vertical-align: middle; }
+  .header .badge.warn { background: #d29922; }
+  .header .badge.ok { background: #238636; }
+  .container { max-width: 960px; margin: 0 auto; padding: 32px 48px; }
+  
+  /* Sections */
+  .section { margin-bottom: 48px; }
+  .section-title { font-size: 13px; text-transform: uppercase; letter-spacing: 2px; color: #58a6ff; margin-bottom: 20px; padding-bottom: 8px; border-bottom: 1px solid #21262d; font-weight: 600; }
+  
+  /* Executive summary box */
+  .exec-box { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 24px; margin-bottom: 16px; }
+  .exec-box p { color: #c9d1d9; margin-bottom: 10px; }
+  .exec-box p:last-child { margin-bottom: 0; }
+  
+  /* Issue cards */
+  .issue-card { background: #161b22; border: 1px solid #30363d; border-radius: 8px; margin-bottom: 16px; overflow: hidden; }
+  .issue-header { display: flex; align-items: center; gap: 12px; padding: 14px 20px; border-bottom: 1px solid #21262d; }
+  .issue-num { font-size: 11px; color: #8b949e; font-weight: 600; min-width: 32px; }
+  .issue-title { font-size: 14px; color: #f0f6fc; font-weight: 600; flex: 1; }
+  .sev { font-size: 10px; font-weight: 700; padding: 2px 10px; border-radius: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .sev-blocker { background: #da3633; color: #fff; }
+  .sev-critical { background: #d29922; color: #0d1117; }
+  .sev-bug { background: #388bfd; color: #0d1117; }
+  .sev-smell { background: #3fb950; color: #0d1117; }
+  .sev-info { background: #8b949e; color: #0d1117; }
+  .issue-body { padding: 16px 20px; }
+  .issue-row { display: grid; grid-template-columns: 130px 1fr; gap: 4px 16px; margin-bottom: 10px; font-size: 13px; }
+  .issue-row:last-child { margin-bottom: 0; }
+  .issue-label { color: #8b949e; font-size: 12px; padding-top: 1px; }
+  .issue-val { color: #c9d1d9; }
+  .issue-val.path { color: #79c0ff; font-family: 'Courier New', monospace; font-size: 12px; }
+  
+  /* Code blocks */
+  pre { background: #0d1117; border: 1px solid #30363d; border-radius: 6px; padding: 14px 16px; font-size: 12px; overflow-x: auto; margin: 10px 0; line-height: 1.6; color: #c9d1d9; }
+  .del { color: #f85149; }
+  .add { color: #3fb950; }
+  .com { color: #8b949e; }
+  .hi { color: #ffa657; }
+  
+  /* Fix cards */
+  .fix-card { background: #0f2a14; border: 1px solid #238636; border-radius: 8px; margin-bottom: 16px; overflow: hidden; }
+  .fix-header { background: #1a3a20; padding: 12px 20px; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid #238636; }
+  .fix-header .fix-num { color: #3fb950; font-size: 11px; font-weight: 700; }
+  .fix-header .fix-title { color: #f0f6fc; font-size: 14px; font-weight: 600; }
+  .fix-body { padding: 16px 20px; }
+  .fix-row { margin-bottom: 12px; font-size: 13px; }
+  .fix-label { color: #8b949e; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px; }
+  
+  /* SQL blocks */
+  .sql-card { background: #161b22; border: 1px solid #30363d; border-radius: 8px; margin-bottom: 16px; overflow: hidden; }
+  .sql-header { background: #1c2128; padding: 10px 16px; font-size: 11px; color: #8b949e; border-bottom: 1px solid #30363d; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; }
+  
+  /* Validation table */
+  .vtable { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .vtable th { text-align: left; padding: 8px 12px; color: #8b949e; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; border-bottom: 1px solid #30363d; }
+  .vtable td { padding: 8px 12px; border-bottom: 1px solid #21262d; }
+  .vtable tr:last-child td { border-bottom: none; }
+  .vtable td:first-child { color: #79c0ff; font-family: monospace; }
+  .vtable td:nth-child(2) { color: #c9d1d9; }
+  .vtable td:last-child { color: #8b949e; }
+  
+  /* Next steps */
+  .steps-list { list-style: none; }
+  .steps-list li { display: flex; gap: 12px; padding: 8px 0; border-bottom: 1px solid #21262d; font-size: 13px; }
+  .steps-list li:last-child { border-bottom: none; }
+  .step-n { color: #58a6ff; font-weight: 700; min-width: 20px; }
+  .step-p { color: #c9d1d9; }
+  
+  .tag-group { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
+  .tag { font-size: 11px; background: #21262d; border: 1px solid #30363d; color: #8b949e; padding: 2px 8px; border-radius: 4px; }
+  
+  .legend { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 24px; font-size: 12px; }
+  .legend-item { display: flex; align-items: center; gap: 6px; }
+  
+  hr.sep { border: none; border-top: 1px solid #21262d; margin: 32px 0; }
+  
+  .risk-low { color: #3fb950; }
+  .risk-med { color: #d29922; }
+  .risk-high { color: #f85149; }
+  
+  a { color: #58a6ff; text-decoration: none; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>VisitAgroPro v0.9.1 — Análise Técnica de Deploy &amp; Qualidade</h1>
+  <div class="meta" style="margin-top:10px;">
+    <span class="badge">2 BLOQUEANTES</span>
+    <span class="badge warn">3 CRÍTICOS</span>
+    <span class="badge ok">5 BUGS / SMELLS</span>
+    &nbsp; Gerado em: 09/04/2026 &nbsp;·&nbsp; Base: commit 7096738 / branch main
+  </div>
+</div>
+
+<div class="container">
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- 1. RESUMO EXECUTIVO -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="section">
+  <div class="section-title">1 · Resumo Executivo</div>
+  <div class="exec-box">
+    <p>O log de build da Vercel foi interrompido imediatamente após <code>"Linting and checking validity of types ..."</code> — o que indica que o processo falhou durante a etapa de <strong>type-checking do TypeScript</strong>, e não durante compilação ou bundling. O build passou em <em>Compiled successfully</em>, mas travou no lint/type phase.</p>
+    <p>A causa raiz imediata identificada no código é o arquivo <code>src/app/dashboard/map/page.tsx</code> que <strong>usa <code>useState</code> sem importá-lo</strong>. Isso produz um erro TypeScript fatal (<code>ReferenceError</code> em nível estático) que derruba o build. Há um segundo problema crítico no mesmo arquivo: <code>useEffect</code> retornando <code>null</code> explícito, que viola o tipo de retorno esperado (<code>void | (() => void)</code>).</p>
+    <p>Além do bloqueante de build, foram encontrados: um <strong>hash_algo inválido</strong> no <code>Schema_Fix_user.sql</code> (valor <code>'pbkdf2'</code> não está no CHECK constraint do banco, quebraria o login do admin); <strong>RLS desabilitado globalmente</strong> no schema; e o <code>package.json</code> com versão desatualizada (<code>0.8.1</code>). As demais correções da v0.9.1 (JWT HMAC, apiFetch, race condition de order_number) estão corretamente implementadas.</p>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- 2. EVIDÊNCIAS USADAS -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="section">
+  <div class="section-title">2 · Evidências Usadas</div>
+  <div class="tag-group">
+    <span class="tag">log Vercel (fornecido)</span>
+    <span class="tag">src/app/dashboard/map/page.tsx</span>
+    <span class="tag">src/lib/auth.ts</span>
+    <span class="tag">middleware.ts</span>
+    <span class="tag">src/lib/apiFetch.ts</span>
+    <span class="tag">src/lib/supabaseAdmin.ts</span>
+    <span class="tag">src/app/api/orders/route.ts</span>
+    <span class="tag">src/app/api/auth/login/route.ts</span>
+    <span class="tag">src/app/api/admin/cleanup/route.ts</span>
+    <span class="tag">src/app/dashboard/settings/page.tsx</span>
+    <span class="tag">package.json</span>
+    <span class="tag">tsconfig.json</span>
+    <span class="tag">vercel.json</span>
+    <span class="tag">schema_completo_v09.sql</span>
+    <span class="tag">Schema_Fix_user.sql</span>
+    <span class="tag">CHANGELOG.md</span>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- 3. STACK E ESTRUTURA REAL -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="section">
+  <div class="section-title">3 · Stack e Estrutura Real</div>
+  <div class="exec-box">
+    <p><strong>Runtime:</strong> Next.js 14.2.35 (App Router) · Node 20.x · Vercel Edge (middleware) + Serverless Functions (API Routes)</p>
+    <p><strong>Banco:</strong> Supabase PostgreSQL com service_role key server-side; sem Supabase Auth (JWT HS256 próprio via jsonwebtoken + bcrypt)</p>
+    <p><strong>Frontend:</strong> React 18 · Zustand persist · Leaflet (ssr:false via dynamic import) · Tailwind 3</p>
+    <p><strong>Auth:</strong> Middleware Edge faz HMAC-SHA256 (Web Crypto); API routes usam Node crypto (bcrypt/pbkdf2); apiFetch injeta token do localStorage</p>
+    <p><strong>Região Vercel:</strong> gru1 (São Paulo) · maxDuration 15s para API routes</p>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- 4. ERROS BLOQUEANTES -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="section">
+  <div class="section-title">4 · Erros Bloqueantes de Build/Deploy</div>
+  
+  <div class="legend">
+    <div class="legend-item"><span class="sev sev-blocker">BLOQUEANTE</span> <span style="color:#8b949e">impede deploy completamente</span></div>
+    <div class="legend-item"><span class="sev sev-critical">CRÍTICO</span> <span style="color:#8b949e">falha em runtime após deploy</span></div>
+    <div class="legend-item"><span class="sev sev-bug">BUG</span> <span style="color:#8b949e">comportamento incorreto em cenário específico</span></div>
+    <div class="legend-item"><span class="sev sev-smell">SMELL</span> <span style="color:#8b949e">code smell / melhoria de qualidade</span></div>
+  </div>
+
+  <!-- B1 -->
+  <div class="issue-card">
+    <div class="issue-header">
+      <span class="issue-num">B-1</span>
+      <span class="issue-title">useState não importado em map/page.tsx — build TypeScript fatal</span>
+      <span class="sev sev-blocker">BLOQUEANTE</span>
+    </div>
+    <div class="issue-body">
+      <div class="issue-row">
+        <span class="issue-label">Localização</span>
+        <span class="issue-val path">src/app/dashboard/map/page.tsx : linha 19</span>
+      </div>
+      <div class="issue-row">
+        <span class="issue-label">Evidência</span>
+        <span class="issue-val">O arquivo importa apenas <code>useEffect</code> da linha 3, mas a linha 19 usa <code>useState</code> (não importado). O log de build confirma: build passou em <em>"Compiled successfully"</em> mas travou em <em>"Linting and checking validity of types..."</em></span>
+      </div>
+      <div class="issue-row">
+        <span class="issue-label">Causa raiz</span>
+        <span class="issue-val">Adição do hydration guard (<code>const [hydrated, setHydrated] = useState(false)</code>) sem atualizar o import statement</span>
+      </div>
+      <div class="issue-row">
+        <span class="issue-label">Impacto técnico</span>
+        <span class="issue-val"><code>ReferenceError: useState is not defined</code> no type-check do TypeScript → build da Vercel termina em erro → zero deploys possíveis</span>
+      </div>
+      <div class="issue-row">
+        <span class="issue-label">Impacto negócio</span>
+        <span class="issue-val">Aplicação inteira fora do ar enquanto o build falhar</span>
+      </div>
+      <pre><span class="del">// ATUAL (linha 3) — useState está FALTANDO</span>
+import { useEffect } from 'react';
+
+<span class="del">// ATUAL (linha 19) — usa useState sem importar</span>
+const [hydrated, setHydrated] = useState(false);</pre>
+    </div>
+  </div>
+
+  <!-- B2 -->
+  <div class="issue-card">
+    <div class="issue-header">
+      <span class="issue-num">B-2</span>
+      <span class="issue-title">useEffect retornando null — tipo de retorno inválido (TypeScript strict)</span>
+      <span class="sev sev-blocker">BLOQUEANTE</span>
+    </div>
+    <div class="issue-body">
+      <div class="issue-row">
+        <span class="issue-label">Localização</span>
+        <span class="issue-val path">src/app/dashboard/map/page.tsx : linha 24<br>src/app/dashboard/products/page.tsx : linha 36</span>
+      </div>
+      <div class="issue-row">
+        <span class="issue-label">Evidência</span>
+        <span class="issue-val">Com <code>"strict": true</code> no tsconfig, o tipo de retorno de um callback de <code>useEffect</code> é <code>void | (() => void)</code>. Retornar <code>null</code> é um erro de tipo: <code>Type 'null' is not assignable to type 'void | (() =&gt; void)'</code></span>
+      </div>
+      <div class="issue-row">
+        <span class="issue-label">Causa raiz</span>
+        <span class="issue-val">Pattern de guard escrito como <code>if (!hydrated) return null;</code> dentro do useEffect, mas null não é um retorno válido — só void ou cleanup function</span>
+      </div>
+      <pre><span class="del">// ATUAL — erro TypeScript</span>
+useEffect(() => {
+  if (!hydrated) return null;  // ← TYPE ERROR
+  if (!isAuthenticated) { router.push('/auth/login'); return; }
+}, [isAuthenticated, router]);</pre>
+    </div>
+  </div>
+
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- 5. CORREÇÕES PROPOSTAS -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="section">
+  <div class="section-title">5 · Correções Propostas</div>
+
+  <!-- FIX 1 -->
+  <div class="fix-card">
+    <div class="fix-header">
+      <span class="fix-num">FIX-1</span>
+      <span class="fix-title">Corrigir map/page.tsx — adicionar useState e remover return null nos useEffects</span>
+    </div>
+    <div class="fix-body">
+      <div class="fix-row">
+        <div class="fix-label">Arquivo</div>
+        <div style="font-family:monospace;color:#79c0ff;">src/app/dashboard/map/page.tsx</div>
+      </div>
+      <div class="fix-row">
+        <div class="fix-label">Trecho Atual</div>
+        <pre><span class="del">import { useEffect } from 'react';</span>
+...
+<span class="del">const [hydrated, setHydrated] = useState(false);</span>
+<span class="del">useEffect(() => { setHydrated(true); }, []);</span>
+<span class="del">useEffect(() => {</span>
+<span class="del">  if (!hydrated) return null;</span>
+<span class="del">  if (!isAuthenticated) { router.push('/auth/login'); return; }</span>
+<span class="del">}, [isAuthenticated, router]);</span></pre>
+      </div>
+      <div class="fix-row">
+        <div class="fix-label">Trecho Corrigido</div>
+        <pre><span class="add">import { useEffect, useState } from 'react';</span>
+...
+<span class="add">const [hydrated, setHydrated] = useState(false);</span>
+<span class="add">useEffect(() => { setHydrated(true); }, []);</span>
+<span class="add">useEffect(() => {</span>
+<span class="add">  if (!hydrated) return;          // void, não null</span>
+<span class="add">  if (!isAuthenticated) { router.push('/auth/login'); }</span>
+<span class="add">}, [hydrated, isAuthenticated, router]);</span></pre>
+      </div>
+      <div class="fix-row">
+        <div class="fix-label">Explicação</div>
+        <div>Dois ajustes atômicos: (1) adicionar <code>useState</code> ao import, eliminando o ReferenceError fatal. (2) trocar <code>return null</code> por <code>return;</code> (void), compatível com o tipo do callback do useEffect. Também adicionamos <code>hydrated</code> às dependências do segundo effect para corretude do ESLint.</div>
+      </div>
+      <div class="fix-row">
+        <div class="fix-label">Risco</div>
+        <span class="risk-low">Mínimo</span> — ajuste puramente sintático, comportamento idêntico
+      </div>
+      <div class="fix-row">
+        <div class="fix-label">Validação local</div>
+        <pre><span class="com"># Deve completar sem erro</span>
+npx tsc --noEmit
+npm run build</pre>
+      </div>
+      <div class="fix-row">
+        <div class="fix-label">Validação Vercel</div>
+        <div>Log de build deve avançar além de <em>"Linting and checking validity of types"</em> e completar com ✓ Build successful.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FIX 2 -->
+  <div class="fix-card">
+    <div class="fix-header">
+      <span class="fix-num">FIX-2</span>
+      <span class="fix-title">Corrigir products/page.tsx — return null dentro de useEffect</span>
+    </div>
+    <div class="fix-body">
+      <div class="fix-row">
+        <div class="fix-label">Arquivo</div>
+        <div style="font-family:monospace;color:#79c0ff;">src/app/dashboard/products/page.tsx : linha 36</div>
+      </div>
+      <div class="fix-row">
+        <div class="fix-label">Trecho Atual</div>
+        <pre><span class="del">useEffect(() => { if (!hydrated) return null;</span>
+<span class="del">  if (!isAuthenticated) router.push('/auth/login');</span>
+<span class="del">}, [isAuthenticated, hydrated, router]);</span></pre>
+      </div>
+      <div class="fix-row">
+        <div class="fix-label">Trecho Corrigido</div>
+        <pre><span class="add">useEffect(() => { if (!hydrated) return;</span>
+<span class="add">  if (!isAuthenticated) router.push('/auth/login');</span>
+<span class="add">}, [isAuthenticated, hydrated, router]);</span></pre>
+      </div>
+      <div class="fix-row">
+        <div class="fix-label">Explicação</div>
+        <div>Mesmo padrão do FIX-1: trocar <code>return null</code> por <code>return;</code>. Mesmo que o type-checker não capture este em strict mode por causa da inferência do map, é um type error latente e boas práticas exigem a correção.</div>
+      </div>
+      <div class="fix-row">
+        <div class="fix-label">Risco</div>
+        <span class="risk-low">Mínimo</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- FIX 3 -->
+  <div class="fix-card">
+    <div class="fix-header">
+      <span class="fix-num">FIX-3</span>
+      <span class="fix-title">package.json — atualizar version de 0.8.1 para 0.9.1</span>
+    </div>
+    <div class="fix-body">
+      <div class="fix-row">
+        <div class="fix-label">Arquivo</div>
+        <div style="font-family:monospace;color:#79c0ff;">package.json</div>
+      </div>
+      <div class="fix-row">
+        <div class="fix-label">Trecho Atual</div>
+        <pre><span class="del">"version": "0.8.1",</span></pre>
+      </div>
+      <div class="fix-row">
+        <div class="fix-label">Trecho Corrigido</div>
+        <pre><span class="add">"version": "0.9.1",</span></pre>
+      </div>
+      <div class="fix-row">
+        <div class="fix-label">Explicação</div>
+        <div>O CHANGELOG documenta v0.9.1 mas o package.json ainda aponta para 0.8.1. Não é bloqueante, mas gera inconsistência em logs da Vercel e no rastreamento de versão.</div>
+      </div>
+      <div class="fix-row">
+        <div class="fix-label">Risco</div>
+        <span class="risk-low">Nenhum</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- FIX 4 - CRÍTICO runtime -->
+  <div class="issue-card">
+    <div class="issue-header">
+      <span class="issue-num">C-1</span>
+      <span class="issue-title">Schema_Fix_user.sql usa hash_algo='pbkdf2' — violaria CHECK constraint do banco</span>
+      <span class="sev sev-critical">CRÍTICO</span>
+    </div>
+    <div class="issue-body">
+      <div class="issue-row">
+        <span class="issue-label">Localização</span>
+        <span class="issue-val path">Schema_Fix_user.sql · schema_completo_v09.sql (CHECK constraint)</span>
+      </div>
+      <div class="issue-row">
+        <span class="issue-label">Evidência</span>
+        <span class="issue-val">O schema define: <code>CHECK (hash_algo = ANY (ARRAY['sha256','bcrypt']))</code>. O arquivo Schema_Fix_user.sql insere <code>hash_algo = 'pbkdf2'</code> — valor fora do constraint. O Supabase rejeitaria o INSERT/UPDATE com erro de constraint violation. Adicionalmente, <code>auth.ts</code> não tem branch para <code>'pbkdf2'</code> — nunca conseguiria fazer login com esse hash.</span>
+      </div>
+      <div class="issue-row">
+        <span class="issue-label">Impacto</span>
+        <span class="issue-val">Usuário admin ficaria sem acesso. O hash <code>pbkdf2:sha512:...</code> no Schema_Fix_user.sql usa formato diferente do que auth.ts espera (formato sha256: com separadores).</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="fix-card">
+    <div class="fix-header">
+      <span class="fix-num">FIX-4</span>
+      <span class="fix-title">Corrigir Schema_Fix_user.sql — usar bcrypt compatível com auth.ts</span>
+    </div>
+    <div class="fix-body">
+      <div class="fix-row">
+        <div class="fix-label">Arquivo</div>
+        <div style="font-family:monospace;color:#79c0ff;">Schema_Fix_user.sql</div>
+      </div>
+      <div class="fix-row">
+        <div class="fix-label">Trecho Atual</div>
+        <pre><span class="del">SET pass_hash = 'pbkdf2:sha512:100000:...',</span>
+<span class="del">    hash_algo = 'pbkdf2'</span></pre>
+      </div>
+      <div class="fix-row">
+        <div class="fix-label">Trecho Corrigido</div>
+        <pre><span class="add"><span class="com">-- Hash bcrypt de 'admin123' com rounds=12 (compatível com auth.ts)</span></span>
+<span class="add">SET pass_hash = '$2a$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY6C8yGHxR7XHZW',</span>
+<span class="add">    hash_algo = 'bcrypt'</span></pre>
+      </div>
+      <div class="fix-row">
+        <div class="fix-label">Explicação</div>
+        <div>O hash bcrypt acima já está presente no <code>schema_completo_v09.sql</code> para o mesmo usuário admin. A correção alinha o Schema_Fix_user.sql com o seed oficial. Após aplicar, valide o login com <code>admin / admin123</code>.</div>
+      </div>
+      <div class="fix-row">
+        <div class="fix-label">Risco</div>
+        <span class="risk-med">Médio</span> — aplica apenas se o Schema_Fix_user.sql foi executado em produção. Verificar antes com <code>SELECT hash_algo FROM users WHERE username = 'admin';</code>
+      </div>
+    </div>
+  </div>
+
+  <!-- C-2 RLS desabilitado -->
+  <div class="issue-card">
+    <div class="issue-header">
+      <span class="issue-num">C-2</span>
+      <span class="issue-title">RLS desabilitado globalmente em todas as tabelas — risco de segurança</span>
+      <span class="sev sev-critical">CRÍTICO</span>
+    </div>
+    <div class="issue-body">
+      <div class="issue-row">
+        <span class="issue-label">Localização</span>
+        <span class="issue-val path">schema_completo_v09.sql : linha 454</span>
+      </div>
+      <div class="issue-row">
+        <span class="issue-label">Evidência</span>
+        <span class="issue-val">O bloco final do schema executa <code>ALTER TABLE % DISABLE ROW LEVEL SECURITY</code> para todas as tabelas (users, clients, orders, commissions, etc). Com a anon key do Supabase exposta no browser (<code>NEXT_PUBLIC_SUPABASE_ANON_KEY</code>), qualquer usuário pode fazer queries diretas via PostgREST sem autenticação.</span>
+      </div>
+      <div class="issue-row">
+        <span class="issue-label">Contexto</span>
+        <span class="issue-val">O projeto usa auth própria (JWT) e o cliente browser usa anon key apenas (supabase.ts). Como todas as queries reais passam pelo service_role server-side, o RLS desabilitado não afeta o fluxo normal — mas expõe o banco a consultas diretas pela anon key via API REST do Supabase.</span>
+      </div>
+      <div class="issue-row">
+        <span class="issue-label">Impacto</span>
+        <span class="issue-val">Exposição de dados de clientes, pedidos e comissões via API pública do Supabase (<code>https://seu-projeto.supabase.co/rest/v1/clients</code>)</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- C-3 supabaseAdmin singleton -->
+  <div class="issue-card">
+    <div class="issue-header">
+      <span class="issue-num">C-3</span>
+      <span class="issue-title">Singleton de supabaseAdmin via variável de módulo — comportamento indefinido em serverless</span>
+      <span class="sev sev-bug">BUG POTENCIAL</span>
+    </div>
+    <div class="issue-body">
+      <div class="issue-row">
+        <span class="issue-label">Localização</span>
+        <span class="issue-val path">src/lib/supabaseAdmin.ts : linha 5</span>
+      </div>
+      <div class="issue-row">
+        <span class="issue-label">Evidência</span>
+        <span class="issue-val"><code>let _client: SupabaseClient | null = null</code> a nível de módulo. Em funções serverless da Vercel, o módulo pode ser recarregado entre invocações ou compartilhado entre invocações quentes. O Supabase SDK com auth desabilitado é stateless para queries, então o risco real é baixo — mas o singleton pode reter estado de auth ou headers em edge cases.</span>
+      </div>
+      <div class="issue-row">
+        <span class="issue-label">Impacto</span>
+        <span class="issue-val">Risco baixo mas real em picos de tráfego ou restarts do worker. Não afeta queries normais.</span>
+      </div>
+      <div class="issue-row">
+        <span class="issue-label">Recomendação</span>
+        <span class="issue-val">Manter o padrão atual (é a prática recomendada pelo Supabase para Next.js). Apenas garantir que <code>auth: { autoRefreshToken: false, persistSession: false }</code> esteja sempre presente — já está.</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- SMELL-1 settings page auth -->
+  <div class="issue-card">
+    <div class="issue-header">
+      <span class="issue-num">S-1</span>
+      <span class="issue-title">settings/page.tsx usa fetch() manual com token em vez de apiFetch()</span>
+      <span class="sev sev-smell">SMELL</span>
+    </div>
+    <div class="issue-body">
+      <div class="issue-row">
+        <span class="issue-label">Localização</span>
+        <span class="issue-val path">src/app/dashboard/settings/page.tsx : linha 36</span>
+      </div>
+      <div class="issue-row">
+        <span class="issue-label">Evidência</span>
+        <span class="issue-val">Define um <code>authFetch</code> local com <code>useCallback</code> que replica manualmente o que <code>apiFetch()</code> já faz. Consistência quebrada — se o padrão de auth mudar, settings/page.tsx seria esquecida.</span>
+      </div>
+      <div class="fix-row" style="margin-top:10px;">
+        <div class="fix-label" style="font-size:11px;color:#8b949e;text-transform:uppercase;margin-bottom:4px;">Correção</div>
+        <pre><span class="del"><span class="com">// ATUAL — wrapper local duplicado</span>
+const authFetch = useCallback((url, opts={}) =>
+  fetch(url, {...opts, headers: {'Content-Type':'application/json',
+    'Authorization': `Bearer ${token}`, ...(opts.headers||{})}}), [token]);</span>
+
+<span class="add"><span class="com">// CORRIGIDO — usar apiFetch centralizado</span>
+import { apiFetch } from '@/lib/apiFetch';</span>
+<span class="add">// Remover authFetch e substituir todas as chamadas por apiFetch()</span></pre>
+      </div>
+    </div>
+  </div>
+
+  <!-- SMELL-2 version -->
+  <div class="issue-card">
+    <div class="issue-header">
+      <span class="issue-num">S-2</span>
+      <span class="issue-title">cleanup/route.ts — delete sem filtro em produção pode perder dados</span>
+      <span class="sev sev-bug">BUG</span>
+    </div>
+    <div class="issue-body">
+      <div class="issue-row">
+        <span class="issue-label">Localização</span>
+        <span class="issue-val path">src/app/api/admin/cleanup/route.ts : linha ~40</span>
+      </div>
+      <div class="issue-row">
+        <span class="issue-label">Evidência</span>
+        <span class="issue-val"><code>.delete().neq('id', '00000000-0000-0000-0000-000000000000')</code> é um truque para deleção total (UUID fake). Se o Supabase mudar o comportamento de <code>.delete()</code> sem filtro, ou se a política de RLS bloquear, o filtro pode falhar silenciosamente. O comentário inline confirma: "deleta tudo".</span>
+      </div>
+      <div class="issue-row">
+        <span class="issue-label">Impacto</span>
+        <span class="issue-val">Perda irreversível de todos os dados da tabela em produção se acionado por engano. O PIN de segurança mitiga, mas não elimina o risco.</span>
+      </div>
+      <div class="issue-row">
+        <span class="issue-label">Recomendação</span>
+        <span class="issue-val">Adicionar variável de ambiente <code>ALLOW_CLEANUP=true</code> e bloquear a rota em produção por padrão. No mínimo, logar o workspace antes de deletar.</span>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- 6. AJUSTES DE SCHEMA/SUPABASE -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="section">
+  <div class="section-title">6 · Ajustes de Schema / Supabase</div>
+
+  <div class="sql-card">
+    <div class="sql-header">SQL — Diagnóstico de hash_algo</div>
+    <pre><span class="com">-- Execute no SQL Editor do Supabase para verificar situação atual</span>
+SELECT username, hash_algo, LEFT(pass_hash,10) as hash_preview, active
+FROM users
+WHERE username = 'admin';
+
+<span class="com">-- Resultado esperado:</span>
+<span class="com">--   hash_algo = 'bcrypt'</span>
+<span class="com">--   pass_hash começa com '$2a$12$' ou '$2b$12$'</span>
+<span class="com">-- Se hash_algo = 'pbkdf2': aplicar correção abaixo</span></pre>
+  </div>
+
+  <div class="sql-card">
+    <div class="sql-header">SQL — Correção de hash_algo inválido (se necessário)</div>
+    <pre><span class="com">-- Só execute se o SELECT acima mostrar hash_algo = 'pbkdf2'</span>
+UPDATE users
+SET
+  pass_hash = '$2a$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY6C8yGHxR7XHZW',
+  hash_algo = 'bcrypt',
+  updated_at = NOW()
+WHERE username = 'admin' AND hash_algo NOT IN ('bcrypt', 'sha256');
+
+<span class="com">-- Senha resultante: admin123</span>
+<span class="com">-- OBRIGATÓRIO: trocar após primeiro login em /dashboard/settings</span></pre>
+  </div>
+
+  <div class="sql-card">
+    <div class="sql-header">SQL — Habilitar RLS com política básica (recomendado)</div>
+    <pre><span class="com">-- Aplicar RLS mínimo: apenas service_role pode operar</span>
+<span class="com">-- (Todas as queries legítimas passam pelo service_role server-side)</span>
+
+ALTER TABLE clients     ENABLE ROW LEVEL SECURITY;
+ALTER TABLE orders      ENABLE ROW LEVEL SECURITY;
+ALTER TABLE commissions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE products    ENABLE ROW LEVEL SECURITY;
+ALTER TABLE referrals   ENABLE ROW LEVEL SECURITY;
+ALTER TABLE users       ENABLE ROW LEVEL SECURITY;
+ALTER TABLE audit_log   ENABLE ROW LEVEL SECURITY;
+
+<span class="com">-- Política: bloquear tudo pela anon key (acesso via app usa service_role)</span>
+DO $$
+DECLARE
+  tbl TEXT;
+  tbls TEXT[] := ARRAY['clients','orders','commissions','products',
+                        'referrals','users','audit_log','order_items',
+                        'categories','settings','companies'];
+BEGIN
+  FOREACH tbl IN ARRAY tbls LOOP
+    EXECUTE format(
+      'CREATE POLICY deny_anon_%1$s ON %1$s FOR ALL TO anon USING (false)',
+      tbl
+    );
+  END LOOP;
+END $$;
+
+<span class="com">-- Verificar: anon não deve conseguir listar clientes diretamente</span>
+<span class="com">-- curl https://SEU-PROJETO.supabase.co/rest/v1/clients \</span>
+<span class="com">--   -H "apikey: ANON_KEY" deve retornar []</span></pre>
+  </div>
+
+  <div class="sql-card">
+    <div class="sql-header">SQL — Verificação do trigger order_number (v0.9.0)</div>
+    <pre><span class="com">-- Confirma que o trigger está ativo e a sequência existe</span>
+SELECT tgname, tgenabled
+FROM pg_trigger
+WHERE tgname = 'trg_set_order_number';
+<span class="com">-- Esperado: tgenabled = 'O' (origin)</span>
+
+SELECT last_value FROM order_number_seq;
+<span class="com">-- Deve retornar o número do último pedido criado</span></pre>
+  </div>
+
+  <p style="color:#8b949e;font-size:13px;margin-top:16px;">
+    <strong style="color:#c9d1d9;">Impacto nos dados:</strong> Os SQLs de RLS e verificação são não-destrutivos. A correção de hash_algo afeta apenas 1 registro (admin). O trigger/sequence já foi aplicado na v0.9.0 e não precisa ser reaplicado se o schema_completo_v09.sql foi executado. <br><br>
+    <strong style="color:#c9d1d9;">Cuidados em produção:</strong> Executar a correção de hash_algo em horário de baixo tráfego. Testar login imediatamente após. Manter o hash original anotado como fallback.
+  </p>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- 7. CHANGELOG TÉCNICO -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="section">
+  <div class="section-title">7 · Changelog Técnico das Correções</div>
+  <div class="exec-box">
+    <p><strong style="color:#f0f6fc;">✅ Corretamente implementados na v0.9.1 (confirmado no código):</strong></p>
+    <p>· Verificação HMAC-SHA256 no middleware via Web Crypto API — correto e completo</p>
+    <p>· Remoção do fallback JWT_SECRET hardcoded com throw imediato — correto</p>
+    <p>· apiFetch() centralizado com injeção de Bearer token — correto</p>
+    <p>· clients/page.tsx e referrals/page.tsx usando apiFetch() no save() — correto</p>
+    <p>· Remoção de order_number do INSERT (agora gerenciado pelo trigger) — correto</p>
+    <p>· getAdmin() singleton importado nos routes em vez de inline — correto</p>
+    <p>· Next.js atualizado para 14.2.35 — correto</p>
+    <p>· engines.node fixado em "20.x" — correto</p>
+    <p>· .gitignore criado cobrindo .env.local e .next — correto</p>
+    <br>
+    <p><strong style="color:#f85149;">❌ Pendente / incompleto na v0.9.1:</strong></p>
+    <p>· map/page.tsx: useState não importado — <strong>BLOQUEANTE DE BUILD</strong></p>
+    <p>· map/page.tsx e products/page.tsx: return null em useEffect — erro TypeScript</p>
+    <p>· package.json version: ainda 0.8.1</p>
+    <p>· Schema_Fix_user.sql: hash_algo='pbkdf2' incompatível com CHECK constraint</p>
+    <p>· RLS desabilitado globalmente — risco de segurança</p>
+    <p>· settings/page.tsx: authFetch local duplicando apiFetch</p>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- 8. TESTES E VALIDAÇÕES -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="section">
+  <div class="section-title">8 · Testes e Validações</div>
+  <table class="vtable">
+    <thead>
+      <tr>
+        <th>Teste</th>
+        <th>Comando / Ação</th>
+        <th>Resultado Esperado</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Type-check local</td>
+        <td><code>npx tsc --noEmit</code></td>
+        <td>Zero erros</td>
+      </tr>
+      <tr>
+        <td>Build local</td>
+        <td><code>npm run build</code></td>
+        <td>✓ Build exitcode 0, sem erros de tipo</td>
+      </tr>
+      <tr>
+        <td>Login admin</td>
+        <td>POST /api/auth/login com <code>{"identifier":"admin","password":"admin123"}</code></td>
+        <td>200 com token JWT</td>
+      </tr>
+      <tr>
+        <td>Middleware JWT</td>
+        <td>GET /api/clients sem Authorization header</td>
+        <td>401 "Não autenticado"</td>
+      </tr>
+      <tr>
+        <td>Middleware JWT válido</td>
+        <td>GET /api/clients com Bearer token válido</td>
+        <td>200 com lista de clientes</td>
+      </tr>
+      <tr>
+        <td>Token forjado</td>
+        <td>Enviar JWT com payload alterado mas assinatura inválida</td>
+        <td>401 "Token inválido"</td>
+      </tr>
+      <tr>
+        <td>Criação de pedido</td>
+        <td>POST /api/orders — verificar que order_number é gerado automaticamente</td>
+        <td>201 com order_number preenchido pelo trigger</td>
+      </tr>
+      <tr>
+        <td>Mapa /dashboard/map</td>
+        <td>Navegar para /dashboard/map autenticado</td>
+        <td>Página carrega sem erro de runtime</td>
+      </tr>
+      <tr>
+        <td>RLS anon</td>
+        <td>curl https://projeto.supabase.co/rest/v1/clients -H "apikey: ANON_KEY"</td>
+        <td>[] (lista vazia, política deny_anon ativa)</td>
+      </tr>
+      <tr>
+        <td>hash_algo banco</td>
+        <td>SELECT hash_algo FROM users WHERE username='admin'</td>
+        <td>'bcrypt'</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- 9. PRÓXIMOS PASSOS -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="section">
+  <div class="section-title">9 · Próximos Passos (em ordem)</div>
+  <ul class="steps-list">
+    <li>
+      <span class="step-n">1</span>
+      <span class="step-p"><strong>Corrigir map/page.tsx</strong> — adicionar <code>useState</code> ao import e remover <code>return null</code> dos useEffects. Commit e push. O build da Vercel deve completar.</span>
+    </li>
+    <li>
+      <span class="step-n">2</span>
+      <span class="step-p"><strong>Corrigir products/page.tsx</strong> — mesmo padrão. Incluir no mesmo commit do passo 1.</span>
+    </li>
+    <li>
+      <span class="step-n">3</span>
+      <span class="step-p"><strong>Atualizar package.json</strong> version para <code>0.9.1</code>. Incluir no mesmo commit.</span>
+    </li>
+    <li>
+      <span class="step-n">4</span>
+      <span class="step-p"><strong>Verificar hash_algo do admin no Supabase</strong> com o SELECT do item 6. Se retornar 'pbkdf2', aplicar o UPDATE de correção imediatamente e testar login.</span>
+    </li>
+    <li>
+      <span class="step-n">5</span>
+      <span class="step-p"><strong>Aplicar RLS</strong> no Supabase com o bloco SQL do item 6. Testar que o acesso via anon key retorna vazio, e que o app continua funcionando normalmente (usa service_role).</span>
+    </li>
+    <li>
+      <span class="step-n">6</span>
+      <span class="step-p"><strong>Migrar settings/page.tsx</strong> para usar <code>apiFetch()</code> em vez do <code>authFetch</code> local. Baixa urgência mas aumenta a consistência.</span>
+    </li>
+    <li>
+      <span class="step-n">7</span>
+      <span class="step-p"><strong>Adicionar ALLOW_CLEANUP guard</strong> no cleanup/route.ts para evitar deleção acidental em produção. Considerar backup automático antes da limpeza.</span>
+    </li>
+    <li>
+      <span class="step-n">8</span>
+      <span class="step-p"><strong>Remover gerar_projeto.js da raiz</strong> — o CHANGELOG v0.9.1 menciona isso, mas o arquivo ainda está presente no ZIP entregue (29KB de scaffolding exposto).</span>
+    </li>
+  </ul>
+</div>
+
+<hr class="sep">
+<div style="color:#8b949e;font-size:12px;text-align:center;padding-bottom:32px;">
+  VisitAgroPro v0.9.1 · Análise baseada exclusivamente em evidências do repositório · 09/04/2026
+</div>
+
+</div><!-- /container -->
+</body>
+</html>

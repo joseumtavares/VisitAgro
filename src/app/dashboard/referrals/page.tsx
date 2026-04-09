@@ -43,7 +43,7 @@ export default function ReferralsPage() {
     try{
       const url=editing?`/api/referrals/${editing.id}`:'/api/referrals';
       const method=editing?'PUT':'POST';
-      const r=await fetch(url,{method,headers:{'Content-Type':'application/json'},body:JSON.stringify(form)});
+      const r=await apiFetch(url,{method,body:JSON.stringify(form)});
       if(!r.ok){const j=await r.json();throw new Error(j.error);}
       await load(); setShowModal(false);
     }catch(e:any){setError(e.message);}finally{setSaving(false);}

@@ -4,7 +4,9 @@ import bcrypt  from 'bcryptjs';
 import jwt     from 'jsonwebtoken';
 import crypto  from 'crypto';
 
-const SECRET     = process.env.JWT_SECRET || 'TROQUE-EM-PRODUCAO-min-32-chars-agrovisita!!';
+const _secret = process.env.JWT_SECRET;
+if (!_secret) throw new Error('[auth] JWT_SECRET não configurado. Defina a variável de ambiente.');
+const SECRET     = _secret;
 const EXPIRES_IN = parseInt(process.env.JWT_EXPIRES_IN || '28800', 10);
 
 // ── Verificação de senha — suporta bcrypt E sha256 ────────────

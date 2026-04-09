@@ -24,9 +24,6 @@ export async function POST(req: NextRequest) {
   const admin = getAdmin();
   const orderId = crypto.randomUUID();
 
-  const { count } = await admin.from('orders').select('*', { count: 'exact', head: true });
-  const orderNumber = (count ?? 0) + 1;
-
   let commissionValue = 0;
   const total = Number(body.total ?? 0);
   if (body.referral_id) {
@@ -49,7 +46,7 @@ export async function POST(req: NextRequest) {
     .insert([{
       ...orderData,          // NÃO inclui 'items'
       id: orderId,
-      order_number: orderNumber,
+      // order_number: gerado automaticamente pelo trigger set_order_number() no banco
       commission_value: commissionValue,
       payment_type: payment_type || 'avista',
       commission_type: orderData.commission_type || 'percent',
@@ -79,6 +76,6 @@ export async function POST(req: NextRequest) {
     await generateCommission(admin, order, commissionValue);
   }
 
-  await auditLog('[VENDA] Pedido criado', { order_id: orderId, order_number: orderNumber, total });
+  await auditLog('[VENDA] Pedido criado', { order_id: orderId, total });
   return NextResponse.json({ order }, { status: 201 });
 }

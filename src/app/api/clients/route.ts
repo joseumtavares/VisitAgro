@@ -1,13 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-
-function getAdmin() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { auth: { autoRefreshToken: false, persistSession: false } }
-  );
-}
+import { getAdmin } from '@/lib/supabaseAdmin';
 
 export async function GET() {
   try {
@@ -18,7 +10,8 @@ export async function GET() {
     if (error) throw error;
     return NextResponse.json({ clients: data ?? [] });
   } catch (e: any) {
-    return NextResponse.json({ error: e.message }, { status: 500 });
+    console.error('[clients GET]', e.message);
+    return NextResponse.json({ error: 'Erro ao buscar clientes' }, { status: 500 });
   }
 }
 
@@ -41,6 +34,7 @@ export async function POST(req: NextRequest) {
     if (error) throw error;
     return NextResponse.json({ client: data }, { status: 201 });
   } catch (e: any) {
-    return NextResponse.json({ error: e.message }, { status: 500 });
+    console.error('[clients POST]', e.message);
+    return NextResponse.json({ error: 'Erro ao criar cliente' }, { status: 500 });
   }
 }

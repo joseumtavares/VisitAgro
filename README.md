@@ -208,40 +208,63 @@ npm run build
 ## 🏗️ Arquitetura
 
 ```
-src/
-├── app/
-│   ├── api/                  # Route Handlers (server-side)
-│   │   ├── auth/login/       # Autenticação JWT
-│   │   ├── clients/          # CRUD clientes
-│   │   ├── products/         # CRUD produtos
-│   │   ├── referrals/        # CRUD indicadores
-│   │   ├── orders/           # CRUD vendas
-│   │   ├── commissions/      # Comissões
-│   │   ├── categories/       # Categorias
-│   │   ├── cep/[cep]/        # Busca endereço ViaCEP
-│   │   └── admin/            # pin / reprocess / cleanup / logs
-│   ├── auth/login/           # Tela de login
-│   └── dashboard/            # Todas as telas autenticadas
-│       ├── page.tsx           # Dashboard principal
-│       ├── map/               # Mapa de clientes
-│       ├── clients/           # Gestão de clientes
-│       ├── products/          # Gestão de produtos
-│       ├── referrals/         # Gestão de indicadores
-│       ├── sales/             # Registro de vendas
-│       ├── commissions/       # Controle de comissões
-│       ├── maintenance/       # Ferramentas de manutenção
-│       ├── logs/              # Logs administrativos
-│       └── settings/          # Configurações
-├── components/
-│   ├── layout/DashboardShell  # Shell com sidebar colapsável
-│   └── map/InteractiveMap     # Mapa Leaflet completo
-├── lib/
-│   ├── auth.ts               # JWT + verificação de senha
-│   ├── supabase.ts           # Cliente público (browser)
-│   ├── supabaseAdmin.ts      # Cliente service_role (server)
-│   └── commissionHelper.ts   # Lógica de geração de comissões
-└── store/
-    └── authStore.ts          # Estado de autenticação (Zustand)
+/
+├── docs/                           # Documentação e setup
+│   ├── README.md
+│   ├── SETUP_BANCO.md
+│   └── schema*.sql                 # (3 arquivos)
+├── scripts/                        # Scripts & SQL (banco e utilitários)
+│   ├── generate-hash-standalone.js
+│   ├── generate-password-hash.js
+│   ├── insert_admin.sql
+│   └── migration_v2.sql
+├── src/
+│   ├── app/                        # Rotas Next.js
+│   │   ├── api/                    # 13 endpoints
+│   │   │   ├── admin/              # POST /pin · GET /logs · POST /reprocess · POST /cleanup
+│   │   │   ├── auth/               # POST /login · POST /change-password
+│   │   │   ├── clients/            # GET · POST (lista) · GET · PUT · DEL [id]
+│   │   │   ├── orders/             # GET · POST (lista) · GET · PUT [id]
+│   │   │   ├── products/           # GET · POST · GET · PUT · DEL [id]
+│   │   │   └── [outros]/           # referrals · commissions · categories · cep · settings
+│   │   ├── auth/login/             # Tela de login
+│   │   │   └── page.tsx
+│   │   ├── dashboard/              # 8 páginas autenticadas
+│   │   │   ├── clients/            # Cadastro + CEP
+│   │   │   ├── commissions/        # Totalizadores + pagamento
+│   │   │   ├── logs/               # Auditoria
+│   │   │   ├── maintenance/        # PIN + reprocess + cleanup
+│   │   │   ├── map/                # Mapa Leaflet (marcadores por status)
+│   │   │   ├── products/           # Preço + estoque
+│   │   │   ├── referrals/          # Dados bancários + Pix
+│   │   │   ├── sales/              # Pedidos + status
+│   │   │   ├── settings/           # Dados da empresa
+│   │   │   └── page.tsx            # Dashboard principal (KPIs)
+│   │   ├── layout.tsx              # Root layout
+│   │   ├── middleware.ts           # Proteção de rotas
+│   │   └── page.tsx                # Root page
+│   ├── components/                 # UI reutilizável
+│   │   ├── layout/
+│   │   │   └── DashboardShell.tsx
+│   │   └── map/                    # Leaflet map
+│   ├── lib/                        # Utilitários
+│   │   ├── auth.ts                 # JWT + bcrypt
+│   │   ├── commissionHelper.ts     # Lógica de comissões
+│   │   ├── supabase.ts             # Client Supabase
+│   │   └── supabaseAdmin.ts        # Client admin Supabase
+│   ├── store/                      # Zustand auth
+│   │   └── authStore.ts            # user · token · isAuthenticated · login() · logout()
+│   ├── styles/
+│   │   └── globals.css
+│   └── types/                      # TypeScript
+│       └── index.ts                # User · UserRole · Client · Product · Order...
+├── .env.example                    # Configurações de raiz do projeto
+├── next.config.mjs
+├── package.json
+├── postcss.config.js
+├── tailwind.config.js
+├── tsconfig.json
+└── vercel.json
 ```
 
 ---

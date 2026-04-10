@@ -1,4 +1,7 @@
 'use client';
+// src/app/dashboard/products/page.tsx
+// Substitui o arquivo antigo que só tinha nome/descrição/preço/estoque/unidade.
+// Agora inclui todos os campos da tabela products do schema v0.9.
 
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
@@ -8,20 +11,35 @@ import { Plus, Search, Package, Pencil, Trash2, Tag } from 'lucide-react';
 import { apiFetch } from '@/lib/apiFetch';
 
 interface Category { id: string; name: string; }
+
 interface Product {
-  id: string; name: string; description?: string | null;
-  unit_price: number; cost_price?: number; stock_qty: number; unit: string; active: boolean;
-  category_id?: string | null; sku?: string | null; model?: string | null;
-  color?: string | null; finame_code?: string | null; ncm_code?: string | null;
-  rep_commission_pct?: number;
+  id: string;
+  name: string;
+  description?: string | null;
+  unit_price: number;
+  cost_price?: number | null;
+  stock_qty: number;
+  unit: string;
+  active: boolean;
+  category_id?: string | null;
+  sku?: string | null;
+  model?: string | null;
+  color?: string | null;
+  finame_code?: string | null;
+  ncm_code?: string | null;
+  rep_commission_pct?: number | null;
 }
 
-const UNITS = ['UN','KG','L','M','M²','M³','CX','PCT','PC','PAR','SC','T','G','ML'];
+const UNITS = ['UN', 'KG', 'L', 'M', 'M²', 'M³', 'CX', 'PCT', 'PC', 'PAR', 'SC', 'T', 'G', 'ML'];
+
 const EMPTY: Partial<Product> = {
-  name: '', description: '', unit_price: 0, cost_price: 0, stock_qty: 0, unit: 'UN',
-  sku: '', model: '', color: '', finame_code: '', ncm_code: '', rep_commission_pct: 0,
+  name: '', description: '', unit_price: 0, cost_price: 0,
+  stock_qty: 0, unit: 'UN', sku: '', model: '', color: '',
+  finame_code: '', ncm_code: '', rep_commission_pct: 0,
   category_id: null, active: true,
 };
+
+const cur = (v: number) => Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
 export default function ProductsPage() {
   const router = useRouter();
@@ -39,23 +57,36 @@ export default function ProductsPage() {
   const [saving, setSaving]       = useState(false);
   const [error, setError]         = useState('');
 
-  useEffect(() => { if (!hydrated) return; if (!isAuthenticated) router.push('/auth/login'); }, [hydrated, isAuthenticated, router]);
+  useEffect(() => {
+    if (!hydrated) return;
+    if (!isAuthenticated) router.push('/auth/login');
+  }, [hydrated, isAuthenticated, router]);
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [rp, rc] = await Promise.all([
-      apiFetch('/api/products').then(r => r.json()),
-      apiFetch('/api/categories').then(r => r.json()),
-    ]);
-    setProducts(rp.products ?? []);
-    setCategories(rc.categories ?? []);
-    setLoading(false);
+    try {
+      const [rp, rc] = await Promise.all([
+        apiFetch('/api/products').then(r => r.json()),
+        apiFetch('/api/categories').then(r => r.json()),
+      ]);
+      setProducts(rp.products ?? []);
+      setCategories(rc.categories ?? []);
+    } catch (e) {
+      console.error('Erro ao carregar:', e);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => { load(); }, [load]);
 
-  const openNew = () => { setEditing(null); setForm(EMPTY); setError(''); setShowModal(true); };
-  const openEdit = (p: Product) => { setEditing(p); setForm({ ...p }); setError(''); setShowModal(true); };
+  const openNew = () => {
+    setEditing(null); setForm(EMPTY); setError(''); setShowModal(true);
+  };
+
+  const openEdit = (p: Product) => {
+    setEditing(p); setForm({ ...p }); setError(''); setShowModal(true);
+  };
 
   const save = async () => {
     if (!form.name?.trim()) { setError('Nome obrigatório'); return; }
@@ -64,10 +95,17 @@ export default function ProductsPage() {
       const url = editing ? `/api/products/${editing.id}` : '/api/products';
       const method = editing ? 'PUT' : 'POST';
       const r = await apiFetch(url, { method, body: JSON.stringify(form) });
-      if (!r.ok) { const j = await r.json(); throw new Error(j.error); }
-      await load(); setShowModal(false);
-    } catch (e: any) { setError(e.message); }
-    finally { setSaving(false); }
+      if (!r.ok) {
+        const j = await r.json();
+        throw new Error(j.error || `HTTP ${r.status}`);
+      }
+      await load();
+      setShowModal(false);
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const remove = async (id: string) => {
@@ -85,11 +123,12 @@ export default function ProductsPage() {
   const f = (k: keyof Product, v: any) => setForm(p => ({ ...p, [k]: v }));
   const catName = (id?: string | null) => categories.find(c => c.id === id)?.name ?? '—';
 
-  const cur = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  const inp = 'w-full bg-dark-900 border border-dark-700 rounded-lg px-3 py-2 text-white text-sm outline-none focus:ring-2 focus:ring-primary-500';
 
   return (
     <DashboardShell>
       <div className="space-y-6">
+        {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold text-white">Produtos</h1>
@@ -101,6 +140,7 @@ export default function ProductsPage() {
           </button>
         </div>
 
+        {/* Search */}
         <div className="relative">
           <Search className="absolute left-3 top-2.5 w-4 h-4 text-dark-500" />
           <input value={search} onChange={e => setSearch(e.target.value)}
@@ -108,6 +148,7 @@ export default function ProductsPage() {
             className="w-full bg-dark-800 border border-dark-700 rounded-lg py-2 pl-9 pr-4 text-white text-sm focus:ring-2 focus:ring-primary-500 outline-none" />
         </div>
 
+        {/* Table */}
         {loading ? (
           <div className="text-center py-12 text-dark-400">Carregando...</div>
         ) : filtered.length === 0 ? (
@@ -125,7 +166,7 @@ export default function ProductsPage() {
                     <th className="text-left px-4 py-3">Nome / Modelo</th>
                     <th className="text-left px-4 py-3">Categoria</th>
                     <th className="text-left px-4 py-3">SKU</th>
-                    <th className="text-right px-4 py-3">Preço Venda</th>
+                    <th className="text-right px-4 py-3">Venda</th>
                     <th className="text-right px-4 py-3">Custo</th>
                     <th className="text-right px-4 py-3">Estoque</th>
                     <th className="text-right px-4 py-3">Comissão</th>
@@ -149,7 +190,7 @@ export default function ProductsPage() {
                       <td className="px-4 py-3 text-right text-sm text-white font-medium">{cur(p.unit_price)}</td>
                       <td className="px-4 py-3 text-right text-xs text-dark-400">{p.cost_price ? cur(p.cost_price) : '—'}</td>
                       <td className="px-4 py-3 text-right">
-                        <span className={`text-sm font-medium ${p.stock_qty <= 0 ? 'text-red-400' : p.stock_qty < 10 ? 'text-yellow-400' : 'text-green-400'}`}>
+                        <span className={`text-sm font-medium ${Number(p.stock_qty) <= 0 ? 'text-red-400' : Number(p.stock_qty) < 10 ? 'text-yellow-400' : 'text-green-400'}`}>
                           {p.stock_qty} {p.unit}
                         </span>
                       </td>
@@ -158,8 +199,8 @@ export default function ProductsPage() {
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center justify-end gap-2">
-                          <button onClick={() => openEdit(p)} className="text-dark-400 hover:text-white p-1.5 rounded hover:bg-dark-700 transition-colors"><Pencil className="w-4 h-4" /></button>
-                          <button onClick={() => remove(p.id)} className="text-dark-400 hover:text-red-400 p-1.5 rounded hover:bg-dark-700 transition-colors"><Trash2 className="w-4 h-4" /></button>
+                          <button onClick={() => openEdit(p)} className="text-dark-400 hover:text-white p-1.5 rounded hover:bg-dark-700 transition-colors" title="Editar"><Pencil className="w-4 h-4" /></button>
+                          <button onClick={() => remove(p.id)} className="text-dark-400 hover:text-red-400 p-1.5 rounded hover:bg-dark-700 transition-colors" title="Desativar"><Trash2 className="w-4 h-4" /></button>
                         </div>
                       </td>
                     </tr>
@@ -175,13 +216,17 @@ export default function ProductsPage() {
       {showModal && (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
           <div className="bg-dark-800 rounded-xl border border-dark-700 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+
+            {/* Modal header */}
             <div className="p-6 border-b border-dark-700 flex justify-between items-center sticky top-0 bg-dark-800 z-10">
               <h2 className="text-white font-semibold text-lg">{editing ? 'Editar Produto' : 'Novo Produto'}</h2>
               <button onClick={() => setShowModal(false)} className="text-dark-400 hover:text-white text-xl">✕</button>
             </div>
 
             <div className="p-6 space-y-6">
-              {error && <div className="bg-red-500/10 border border-red-500 text-red-400 text-sm px-3 py-2 rounded-lg">{error}</div>}
+              {error && (
+                <div className="bg-red-500/10 border border-red-500 text-red-400 text-sm px-3 py-2 rounded-lg">{error}</div>
+              )}
 
               {/* IDENTIFICAÇÃO */}
               <div>
@@ -190,89 +235,89 @@ export default function ProductsPage() {
                   <div className="sm:col-span-2">
                     <label className="block text-xs text-dark-400 mb-1">Nome *</label>
                     <input value={form.name ?? ''} onChange={e => f('name', e.target.value)}
-                      placeholder="Ex: Bioqueimador a Pellets"
-                      className="w-full bg-dark-900 border border-dark-700 rounded-lg px-3 py-2 text-white text-sm outline-none focus:ring-2 focus:ring-primary-500" />
+                      placeholder="Ex: Bioqueimador a Pellets" className={inp} />
                   </div>
                   <div>
                     <label className="block text-xs text-dark-400 mb-1">Modelo</label>
                     <input value={form.model ?? ''} onChange={e => f('model', e.target.value)}
-                      placeholder="Ex: BQ-200"
-                      className="w-full bg-dark-900 border border-dark-700 rounded-lg px-3 py-2 text-white text-sm outline-none focus:ring-2 focus:ring-primary-500" />
+                      placeholder="Ex: BQ-200" className={inp} />
                   </div>
                   <div>
                     <label className="block text-xs text-dark-400 mb-1">SKU / Código</label>
                     <input value={form.sku ?? ''} onChange={e => f('sku', e.target.value)}
-                      placeholder="Ex: PRD-001"
-                      className="w-full bg-dark-900 border border-dark-700 rounded-lg px-3 py-2 text-white text-sm outline-none focus:ring-2 focus:ring-primary-500" />
+                      placeholder="Ex: PRD-001" className={inp} />
                   </div>
                   <div>
                     <label className="block text-xs text-dark-400 mb-1">Categoria</label>
-                    <select value={form.category_id ?? ''} onChange={e => f('category_id', e.target.value || null)}
-                      className="w-full bg-dark-900 border border-dark-700 rounded-lg px-3 py-2 text-white text-sm outline-none focus:ring-2 focus:ring-primary-500">
+                    <select value={form.category_id ?? ''} onChange={e => f('category_id', e.target.value || null)} className={inp}>
                       <option value="">Selecione...</option>
                       {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                     </select>
+                    {categories.length === 0 && (
+                      <p className="text-xs text-dark-500 mt-1">
+                        Nenhuma categoria. Crie em <span className="text-primary-400">Configurações → Categorias</span>.
+                      </p>
+                    )}
                   </div>
                   <div>
                     <label className="block text-xs text-dark-400 mb-1">Cor</label>
                     <input value={form.color ?? ''} onChange={e => f('color', e.target.value)}
-                      placeholder="Ex: Preto fosco"
-                      className="w-full bg-dark-900 border border-dark-700 rounded-lg px-3 py-2 text-white text-sm outline-none focus:ring-2 focus:ring-primary-500" />
+                      placeholder="Ex: Preto fosco" className={inp} />
                   </div>
                 </div>
               </div>
 
-              {/* PREÇOS */}
+              {/* PREÇOS E ESTOQUE */}
               <div>
                 <p className="text-xs text-dark-500 uppercase tracking-wider font-semibold mb-3">Preços e Estoque</p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs text-dark-400 mb-1">Valor de Venda (R$) *</label>
-                    <input type="number" min="0" step="0.01" value={form.unit_price ?? 0} onChange={e => f('unit_price', parseFloat(e.target.value) || 0)}
-                      className="w-full bg-dark-900 border border-dark-700 rounded-lg px-3 py-2 text-white text-sm outline-none focus:ring-2 focus:ring-primary-500" />
+                    <input type="number" min="0" step="0.01"
+                      value={form.unit_price ?? 0} onChange={e => f('unit_price', parseFloat(e.target.value) || 0)}
+                      className={inp} />
                   </div>
                   <div>
                     <label className="block text-xs text-dark-400 mb-1">Custo (R$)</label>
-                    <input type="number" min="0" step="0.01" value={form.cost_price ?? 0} onChange={e => f('cost_price', parseFloat(e.target.value) || 0)}
-                      className="w-full bg-dark-900 border border-dark-700 rounded-lg px-3 py-2 text-white text-sm outline-none focus:ring-2 focus:ring-primary-500" />
+                    <input type="number" min="0" step="0.01"
+                      value={form.cost_price ?? 0} onChange={e => f('cost_price', parseFloat(e.target.value) || 0)}
+                      className={inp} />
                   </div>
                   <div>
                     <label className="block text-xs text-dark-400 mb-1">Estoque</label>
-                    <input type="number" min="0" value={form.stock_qty ?? 0} onChange={e => f('stock_qty', parseFloat(e.target.value) || 0)}
-                      className="w-full bg-dark-900 border border-dark-700 rounded-lg px-3 py-2 text-white text-sm outline-none focus:ring-2 focus:ring-primary-500" />
+                    <input type="number" min="0" step="0.01"
+                      value={form.stock_qty ?? 0} onChange={e => f('stock_qty', parseFloat(e.target.value) || 0)}
+                      className={inp} />
                   </div>
                   <div>
                     <label className="block text-xs text-dark-400 mb-1">Unidade</label>
-                    <select value={form.unit ?? 'UN'} onChange={e => f('unit', e.target.value)}
-                      className="w-full bg-dark-900 border border-dark-700 rounded-lg px-3 py-2 text-white text-sm outline-none focus:ring-2 focus:ring-primary-500">
+                    <select value={form.unit ?? 'UN'} onChange={e => f('unit', e.target.value)} className={inp}>
                       {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
                     </select>
                   </div>
                   <div>
                     <label className="block text-xs text-dark-400 mb-1">% Comissão Representante</label>
-                    <input type="number" min="0" max="100" step="0.1" value={form.rep_commission_pct ?? 0}
+                    <input type="number" min="0" max="100" step="0.1"
+                      value={form.rep_commission_pct ?? 0}
                       onChange={e => f('rep_commission_pct', parseFloat(e.target.value) || 0)}
-                      placeholder="Ex: 5"
-                      className="w-full bg-dark-900 border border-dark-700 rounded-lg px-3 py-2 text-white text-sm outline-none focus:ring-2 focus:ring-primary-500" />
+                      placeholder="Ex: 5" className={inp} />
                   </div>
                 </div>
               </div>
 
-              {/* FISCAL */}
+              {/* DADOS FISCAIS */}
               <div>
-                <p className="text-xs text-dark-500 uppercase tracking-wider font-semibold mb-3">Dados Fiscais</p>
+                <p className="text-xs text-dark-500 uppercase tracking-wider font-semibold mb-3">Dados Fiscais (opcional)</p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs text-dark-400 mb-1">Código FINAME</label>
                     <input value={form.finame_code ?? ''} onChange={e => f('finame_code', e.target.value)}
-                      placeholder="Ex: 7310.29.00"
-                      className="w-full bg-dark-900 border border-dark-700 rounded-lg px-3 py-2 text-white text-sm outline-none focus:ring-2 focus:ring-primary-500" />
+                      placeholder="Ex: 7310.29.00" className={inp} />
                   </div>
                   <div>
                     <label className="block text-xs text-dark-400 mb-1">NCM</label>
                     <input value={form.ncm_code ?? ''} onChange={e => f('ncm_code', e.target.value)}
-                      placeholder="Ex: 8419.89.99"
-                      className="w-full bg-dark-900 border border-dark-700 rounded-lg px-3 py-2 text-white text-sm outline-none focus:ring-2 focus:ring-primary-500" />
+                      placeholder="Ex: 8419.89.99" className={inp} />
                   </div>
                 </div>
               </div>
@@ -286,6 +331,7 @@ export default function ProductsPage() {
               </div>
             </div>
 
+            {/* Modal footer */}
             <div className="p-6 border-t border-dark-700 flex gap-3 justify-end sticky bottom-0 bg-dark-800">
               <button onClick={() => setShowModal(false)} className="px-4 py-2 text-dark-400 hover:text-white text-sm">Cancelar</button>
               <button onClick={save} disabled={saving}

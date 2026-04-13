@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAdmin, auditLog } from '@/lib/supabaseAdmin';
 import { generateCommission } from '@/lib/commissionHelper';
+import { getRequestContext } from '@/lib/requestContext';
 
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
   const admin = getAdmin();
-  const workspace = req.headers.get('x-workspace') || 'principal';
+  const { workspace } = getRequestContext(req);
 
   const { data: order, error } = await admin
     .from('orders')
@@ -28,9 +29,15 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
 
 export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
   const admin = getAdmin();
-  const workspace = req.headers.get('x-workspace') || 'principal';
-  const userId = req.headers.get('x-user-id') || '';
+  const { workspace, userId } = getRequestContext(req);
   const body = await req.json();
+
+  if (typeof body.version !== 'number') {
+    return NextResponse.json(
+      { error: 'Versão do pedido obrigatória para atualização.' },
+      { status: 409 }
+    );
+  }
 
   const { data: prev, error: prevError } = await admin
     .from('orders')
@@ -55,7 +62,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
 
   const payload: Record<string, any> = {
     ...updateData,
-    version: typeof body.version === 'number' ? body.version : prev.version,
+    version: body.version,
     updated_at: new Date().toISOString(),
   };
 
@@ -69,7 +76,9 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     .single();
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    const message = String(error.message || '');
+    const status = message.includes('Order version mismatch') ? 409 : 500;
+    return NextResponse.json({ error: error.message }, { status });
   }
 
   if (
@@ -101,7 +110,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
 
   await auditLog(
     '[VENDA] Pedido atualizado',
-    { order_id: params.id, status: order.status, workspace },
+    { order_id: params.id, status: order.status, workspace, version: order.version },
     userId
   );
 
@@ -109,8 +118,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
 }
 
 export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
-  const workspace = req.headers.get('x-workspace') || 'principal';
-  const userId = req.headers.get('x-user-id') || '';
+  const { workspace, userId } = getRequestContext(req);
 
   const { error } = await getAdmin()
     .from('orders')

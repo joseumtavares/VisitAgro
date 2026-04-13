@@ -8,7 +8,8 @@ import { MapPin, Lock, User } from 'lucide-react';
 export default function LoginPage() {
   const router = useRouter();
   const login = useAuthStore((state) => state.login);
-  const [identifier, setIdentifier] = useState(''); // Aceita username ou email
+
+  const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -27,78 +28,82 @@ export default function LoginPage() {
 
       const data = await res.json();
 
-      if (!res.ok) throw new Error(data.error || 'Falha na autenticação');
+      if (!res.ok) {
+        throw new Error(data.error || 'Falha no login');
+      }
 
       login(data.user, data.token);
       router.push('/dashboard');
-    } catch (err: any) {
-      setError(err.message);
+    } catch (e: any) {
+      setError(e.message || 'Falha no login');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-dark-900 p-4">
-      <div className="max-w-md w-full bg-dark-800 rounded-xl shadow-2xl p-8 border border-dark-700">
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary-600 mb-4">
-            <MapPin className="w-8 h-8 text-white" />
+    <main className="min-h-screen bg-dark-950 text-white flex items-center justify-center px-6">
+      <div className="w-full max-w-md bg-dark-900 border border-dark-800 rounded-2xl p-8 shadow-2xl">
+        <div className="flex items-center gap-3 mb-8">
+          <div className="w-12 h-12 rounded-xl bg-primary-600/20 flex items-center justify-center">
+            <MapPin className="w-6 h-6 text-primary-400" />
           </div>
-          <h1 className="text-2xl font-bold text-white">Agrovisita Pro</h1>
-          <p className="text-dark-400 mt-2">Acesse sua conta para continuar</p>
+          <div>
+            <h1 className="text-2xl font-bold">VisitAgro Pro</h1>
+            <p className="text-sm text-dark-400">Acesse sua conta</p>
+          </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {error && (
-            <div className="bg-red-500/10 border border-red-500 text-red-500 p-3 rounded-lg text-sm">
-              {error}
-            </div>
-          )}
-
+        <form onSubmit={handleSubmit} className="space-y-5">
           <div>
-            <label className="block text-sm font-medium text-dark-300 mb-2">Usuário ou Email</label>
+            <label className="block text-sm text-dark-300 mb-2">Usuário ou e-mail</label>
             <div className="relative">
-              <User className="absolute left-3 top-3 w-5 h-5 text-dark-500" />
+              <User className="w-4 h-4 text-dark-500 absolute left-3 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
                 value={identifier}
                 onChange={(e) => setIdentifier(e.target.value)}
-                className="w-full bg-dark-900 border border-dark-700 rounded-lg py-2.5 pl-10 pr-4 text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition"
-                placeholder="usuário ou e-mail"
-                required
+                placeholder="Digite seu usuário ou e-mail"
+                className="w-full bg-dark-950 border border-dark-700 rounded-lg py-3 pl-10 pr-4 text-white text-sm outline-none focus:ring-2 focus:ring-primary-500"
+                autoComplete="username"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-dark-300 mb-2">Senha</label>
+            <label className="block text-sm text-dark-300 mb-2">Senha</label>
             <div className="relative">
-              <Lock className="absolute left-3 top-3 w-5 h-5 text-dark-500" />
+              <Lock className="w-4 h-4 text-dark-500 absolute left-3 top-1/2 -translate-y-1/2" />
               <input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full bg-dark-900 border border-dark-700 rounded-lg py-2.5 pl-10 pr-4 text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition"
-                placeholder="••••••••"
-                required
+                placeholder="Digite sua senha"
+                className="w-full bg-dark-950 border border-dark-700 rounded-lg py-3 pl-10 pr-4 text-white text-sm outline-none focus:ring-2 focus:ring-primary-500"
+                autoComplete="current-password"
               />
             </div>
           </div>
 
+          {error && (
+            <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+              {error}
+            </div>
+          )}
+
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-primary-600 hover:bg-primary-700 text-white font-semibold py-3 rounded-lg transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full bg-primary-600 hover:bg-primary-700 disabled:opacity-60 disabled:cursor-not-allowed text-white py-3 rounded-lg font-medium transition-colors"
           >
             {loading ? 'Entrando...' : 'Entrar'}
           </button>
         </form>
 
-        <p className="mt-6 text-center text-xs text-dark-400">
-          Use suas credenciais de acesso fornecidas pelo administrador.
+        <p className="mt-6 text-xs text-dark-500 text-center">
+          Use as credenciais fornecidas pelo administrador.
         </p>
       </div>
-    </div>
+    </main>
   );
 }

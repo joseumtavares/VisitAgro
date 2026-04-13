@@ -30,7 +30,11 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
 }
 
 export async function DELETE(_: NextRequest, { params }: { params: { id: string } }) {
-  const { error } = await getAdmin().from('clients').delete().eq('id', params.id);
+  // FIX #5: soft delete — preserva histórico de pedidos, visitas e comissões vinculados
+  const { error } = await getAdmin()
+    .from('clients')
+    .update({ deleted_at: new Date().toISOString() })
+    .eq('id', params.id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ ok: true });
 }

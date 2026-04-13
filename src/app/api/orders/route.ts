@@ -58,18 +58,29 @@ export async function POST(req: NextRequest) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   if (orderItems?.length) {
-    const items = orderItems.map((item: any) => ({
-      id: crypto.randomUUID(),
-      order_id: orderId,
-      product_id: item.product_id || null,
-      product_name: item.product_name || '',
-      quantity: Number(item.quantity) || 1,
-      unit_price: Number(item.unit_price) || 0,
-      total: (Number(item.quantity)||1) * (Number(item.unit_price)||0),
-      rep_commission_pct: Number(item.rep_commission_pct) || 0,
-    }));
-    const { error: ie } = await admin.from('order_items').insert(items);
-    if (ie) console.error('[orders] order_items insert error:', ie.message);
+    // FIX #2: product_id é NOT NULL no banco — filtrar itens sem produto antes do insert
+    const validItems = orderItems.filter((item: any) => !!item.product_id);
+    const skipped = orderItems.length - validItems.length;
+    if (skipped > 0) {
+      console.warn(`[orders] ${skipped} item(s) descartado(s) por falta de product_id`);
+    }
+    if (validItems.length > 0) {
+      const items = validItems.map((item: any) => ({
+        id: crypto.randomUUID(),
+        order_id: orderId,
+        product_id: item.product_id,                    // garantidamente não-null
+        product_name: item.product_name || '',
+        quantity: Number(item.quantity) || 1,
+        unit_price: Number(item.unit_price) || 0,
+        total: (Number(item.quantity)||1) * (Number(item.unit_price)||0),
+        rep_commission_pct: Number(item.rep_commission_pct) || 0,
+      }));
+      const { error: ie } = await admin.from('order_items').insert(items);
+      if (ie) {
+        console.error('[orders] order_items insert error:', ie.message);
+        return NextResponse.json({ error: `Erro ao inserir itens: ${ie.message}` }, { status: 500 });
+      }
+    }
   }
 
   if (body.status === 'pago' && body.referral_id && commissionValue > 0) {

@@ -8,10 +8,18 @@ import { apiFetch } from '@/lib/apiFetch';
 
 type OrderStatus='pendente'|'aprovado'|'pago'|'cancelado'|'faturado';
 interface Order {
-  id:string; order_number?:number|null; date?:string|null; status:OrderStatus;
-  total:number; commission_value?:number|null; obs?:string|null;
-  client_id?:string|null; referral_id?:string|null;
-  clients?:{name:string}|null; referrals?:{name:string}|null;
+  id: string;
+  order_number?: number | null;
+  date?: string | null;
+  status: OrderStatus;
+  total: number;
+  version?: number | null;
+  commission_value?: number | null;
+  obs?: string | null;
+  client_id?: string | null;
+  referral_id?: string | null;
+  clients?: { name: string } | null;
+  referrals?: { name: string } | null;
 }
 interface Client{id:string;name:string;}
 interface Product{id:string;name:string;unit_price:number;rep_commission_pct:number;unit:string;}
@@ -137,8 +145,30 @@ export default function SalesPage() {
     }
   };
 
-  const changeStatus=async(id:string,status:OrderStatus)=>{
-    await apiFetch(`/api/orders/${id}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({status})});
+  const changeStatus = async (id: string, status: OrderStatus) => {
+    const order = orders.find((o: Order) => o.id === id);
+
+    if (!order || typeof order.version !== 'number') {
+      setError('Não foi possível identificar a versão atual do pedido.');
+      return;
+    }
+
+    const response = await apiFetch(`/api/orders/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        status,
+        version: order.version,
+      }),
+    });
+
+    if (!response.ok) {
+      const j = await response.json();
+      setError(j.error || 'Erro ao atualizar pedido.');
+      return;
+    }
+
+    setError('');
     await load();
   };
 
@@ -156,6 +186,12 @@ export default function SalesPage() {
           <button onClick={()=>{setError('');setShowModal(true);}} className="flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
             <Plus className="w-4 h-4"/>Nova Venda</button>
         </div>
+
+        {error && !showModal && (
+          <div className="bg-red-500/10 border border-red-500 text-red-400 text-sm px-3 py-2 rounded-lg">
+            {error}
+          </div>
+        )}
 
         {/* Totalizadores */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

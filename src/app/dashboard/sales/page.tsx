@@ -38,7 +38,14 @@ export default function SalesPage() {
   const [search,setSearch]=useState('');
   const [filterStatus,setFilter]=useState<OrderStatus|'todos'>('todos');
   const [showModal,setShowModal]=useState(false);
-  const [form,setForm]=useState<any>({client_id:'',referral_id:'',status:'pendente',payment_type:'avista',date:new Date().toISOString().split('T')[0],obs:'',items:[]});
+  const [form, setForm] = useState({
+    client_id: '',
+    referral_id: '',
+    status: 'pendente' as OrderStatus,
+    date: new Date().toISOString().split('T')[0],
+    obs: '',
+    items: [] as OrderItem[],
+  });
   const [saving,setSaving]=useState(false);
   const [error,setError]=useState('');
 
@@ -77,16 +84,57 @@ export default function SalesPage() {
     return ref.commission_type==='percent'?(total*Number(ref.commission_pct??0)/100):Number(ref.commission??0);
   };
 
-  const save=async()=>{
-    if(!form.client_id){setError('Cliente obrigatório');return;}
+  const save = async () => {
+    if (!form.client_id) {
+      setError('Cliente obrigatório');
+      return;
+    }
+
+    const hasInvalidItems = form.items.some(
+      (item: any) => !item.product_id || Number(item.quantity) <= 0
+    );
+
+    if (hasInvalidItems) {
+      setError('Preencha todos os itens da venda antes de salvar.');
+      return;
+    }
+
     setSaving(true);
-    try{
-      const payload={...form,total,commission_value:calcCommission()};
-      const r=await apiFetch('/api/orders',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
-      if(!r.ok){const j=await r.json();throw new Error(j.error);}
-      await load(); setShowModal(false);
-      setForm({client_id:'',referral_id:'',status:'pendente',payment_type:'avista',date:new Date().toISOString().split('T')[0],obs:'',items:[]});
-    }catch(e:any){setError(e.message);}finally{setSaving(false);}
+
+    try {
+      const payload = {
+        ...form,
+        total,
+        commission_value: calcCommission(),
+      };
+
+      const r = await apiFetch('/api/orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      if (!r.ok) {
+        const j = await r.json();
+        throw new Error(j.error);
+      }
+
+      await load();
+      setShowModal(false);
+      setForm({
+        client_id: '',
+        referral_id: '',
+        status: 'pendente' as OrderStatus,
+        date: new Date().toISOString().split('T')[0],
+        obs: '',
+        items: [] as OrderItem[],
+      });
+      setError('');
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const changeStatus=async(id:string,status:OrderStatus)=>{
@@ -191,13 +239,6 @@ export default function SalesPage() {
                     className="w-full bg-dark-900 border border-dark-700 rounded-lg px-3 py-2 text-white text-sm outline-none focus:ring-2 focus:ring-primary-500">
                     <option value="">Sem indicador</option>
                     {referrals.map(r=><option key={r.id} value={r.id}>{r.name}</option>)}
-                  </select></div>
-                <div><label className="block text-xs text-dark-400 mb-1">Forma de Pagamento</label>
-                  <select value={form.payment_type} onChange={e=>setForm((f:any)=>({...f,payment_type:e.target.value}))}
-                    className="w-full bg-dark-900 border border-dark-700 rounded-lg px-3 py-2 text-white text-sm outline-none focus:ring-2 focus:ring-primary-500">
-                    <option value="avista">À Vista</option>
-                    <option value="parcelado">Parcelado</option>
-                    <option value="financiamento">Financiamento</option>
                   </select></div>
                 <div><label className="block text-xs text-dark-400 mb-1">Status</label>
                   <select value={form.status} onChange={e=>setForm((f:any)=>({...f,status:e.target.value}))}

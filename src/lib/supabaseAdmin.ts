@@ -1,5 +1,7 @@
 // src/lib/supabaseAdmin.ts
 // Cliente server-only com service_role — usar apenas em /api/*
+// getAdmin() usa a service role: o Postgres não aplica RLS a esse cliente.
+// Rotas devem filtrar workspace (e soft-delete) explicitamente no application layer.
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 let _client: SupabaseClient | null = null;

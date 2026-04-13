@@ -65,7 +65,7 @@ export default function LoginPage() {
                 value={identifier}
                 onChange={(e) => setIdentifier(e.target.value)}
                 className="w-full bg-dark-900 border border-dark-700 rounded-lg py-2.5 pl-10 pr-4 text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition"
-                placeholder="admin"
+                placeholder="usuário ou e-mail"
                 required
               />
             </div>
@@ -95,10 +95,9 @@ export default function LoginPage() {
           </button>
         </form>
 
-        <div className="mt-6 text-center text-xs text-dark-500">
-          <p>Usuário: <strong>admin</strong></p>
-          <p>Senha: <strong>admin123</strong></p>
-        </div>
+        <p className="mt-6 text-center text-xs text-dark-400">
+          Use suas credenciais de acesso fornecidas pelo administrador.
+        </p>
       </div>
     </div>
   );

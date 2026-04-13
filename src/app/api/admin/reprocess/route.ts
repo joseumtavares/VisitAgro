@@ -1,13 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAdmin, auditLog } from '@/lib/supabaseAdmin';
 import { generateCommission } from '@/lib/commissionHelper';
+import { getRequestContext } from '@/lib/requestContext';
+
+export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
   const { pin } = await req.json();
   const admin = getAdmin();
+  const { workspace } = getRequestContext(req);
 
-  // Verifica PIN
-  const { data: settings } = await admin.from('settings').select('dev_pin_hash').eq('workspace','principal').maybeSingle();
+  const { data: settings } = await admin
+    .from('settings')
+    .select('dev_pin_hash')
+    .eq('workspace', workspace)
+    .maybeSingle();
   if (settings?.dev_pin_hash) {
     const crypto = await import('crypto');
     const hash = crypto.createHash('sha256').update(pin ?? '').digest('hex');
@@ -16,15 +23,16 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // Busca pedidos pagos sem comissão
   const { data: orders } = await admin.from('orders')
-    .select('id,referral_id,commission_value,total,client_id,date,commission_type,status')
-    .eq('status','pago').not('referral_id','is',null);
+    .select('id,referral_id,commission_value,total,client_id,date,commission_type,status,workspace')
+    .eq('status', 'pago')
+    .eq('workspace', workspace)
+    .not('referral_id', 'is', null);
 
   let created = 0;
   for (const order of orders ?? []) {
     if (!order.referral_id || !Number(order.commission_value)) continue;
-    const { count } = await admin.from('commissions').select('*',{count:'exact',head:true}).eq('order_id',order.id);
+    const { count } = await admin.from('commissions').select('*', { count: 'exact', head: true }).eq('order_id', order.id);
     if (!count || count === 0) {
       await generateCommission(admin, order, Number(order.commission_value));
       created++;

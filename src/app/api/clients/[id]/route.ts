@@ -1,17 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAdmin } from '@/lib/supabaseAdmin';
+import { getRequestContext } from '@/lib/requestContext';
 
-export async function GET(_: NextRequest, { params }: { params: { id: string } }) {
-  const { data, error } = await getAdmin().from('clients').select('*').eq('id', params.id).single();
+export const dynamic = 'force-dynamic';
+
+export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
+  const { workspace } = getRequestContext(req);
+  const { data, error } = await getAdmin()
+    .from('clients')
+    .select('*')
+    .eq('id', params.id)
+    .eq('workspace', workspace)
+    .single();
   if (error) return NextResponse.json({ error: error.message }, { status: 404 });
   return NextResponse.json({ client: data });
 }
 
 export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
   try {
+    const { workspace } = getRequestContext(req);
     const body = await req.json();
 
-    // Recalcula maps_link se lat/lng mudou
     if ((body.lat || body.lng) && !body.maps_link) {
       body.maps_link = `https://www.google.com/maps?q=${body.lat},${body.lng}`;
     }
@@ -20,6 +29,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       .from('clients')
       .update({ ...body, updated_at: new Date().toISOString() })
       .eq('id', params.id)
+      .eq('workspace', workspace)
       .select()
       .single();
     if (error) throw error;
@@ -29,12 +39,16 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   }
 }
 
-export async function DELETE(_: NextRequest, { params }: { params: { id: string } }) {
-  // FIX #5: soft delete — preserva histórico de pedidos, visitas e comissões vinculados
+export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
+  const { workspace } = getRequestContext(req);
   const { error } = await getAdmin()
     .from('clients')
-    .update({ deleted_at: new Date().toISOString() })
-    .eq('id', params.id);
+    .update({
+      deleted_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', params.id)
+    .eq('workspace', workspace);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ ok: true });
 }

@@ -1,32 +1,24 @@
-// middleware.ts — Protege todas as rotas /api/* com JWT
-// Executa no Edge Runtime (sem Node.js full) — usa Web Crypto API nativa
-// Rotas públicas: /api/auth/login, /api/health
 import { NextRequest, NextResponse } from 'next/server';
 
-const PUBLIC_PATHS = [
-  '/api/auth/login',
-  '/api/health',
-];
+const PUBLIC_PATHS = ['/api/auth/login', '/api/health'];
 
-// Decodifica base64url para Uint8Array (compatível com Edge Runtime)
 function base64urlToBytes(b64: string): Uint8Array {
   const padded = b64.replace(/-/g, '+').replace(/_/g, '/');
-  const binary  = atob(padded);
+  const binary = atob(padded);
   return Uint8Array.from(binary, (c) => c.charCodeAt(0));
 }
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Só protege rotas de API
-  if (!pathname.startsWith('/api/')) return NextResponse.next();
+  if (!pathname.startsWith('/api/')) {
+    return NextResponse.next();
+  }
 
-  // Rotas públicas passam direto
   if (PUBLIC_PATHS.some((p) => pathname.startsWith(p))) {
     return NextResponse.next();
   }
 
-  // Extrai Bearer token
   const authHeader = request.headers.get('Authorization') || '';
   const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
 
@@ -42,7 +34,6 @@ export async function middleware(request: NextRequest) {
     return NextResponse.json({ error: 'Token malformado.' }, { status: 401 });
   }
 
-  // ── 1. Verifica assinatura HMAC-SHA256 via Web Crypto API ─────────────────
   const secret = process.env.JWT_SECRET;
   if (!secret) {
     console.error('[middleware] JWT_SECRET não configurado');
@@ -50,7 +41,7 @@ export async function middleware(request: NextRequest) {
   }
 
   try {
-    const encoder   = new TextEncoder();
+    const encoder = new TextEncoder();
     const cryptoKey = await crypto.subtle.importKey(
       'raw',
       encoder.encode(secret),
@@ -60,14 +51,14 @@ export async function middleware(request: NextRequest) {
     );
 
     const signingInput = encoder.encode(`${parts[0]}.${parts[1]}`);
-    const signature    = base64urlToBytes(parts[2]);
+    const signature = base64urlToBytes(parts[2]);
 
     const valid = await crypto.subtle.verify(
-    'HMAC',
-    cryptoKey,
-    signature.buffer as ArrayBuffer,   // ← cast para ArrayBuffer puro
-    signingInput.buffer as ArrayBuffer  // ← idem
-);
+      'HMAC',
+      cryptoKey,
+      signature.buffer as ArrayBuffer,
+      signingInput.buffer as ArrayBuffer
+    );
 
     if (!valid) {
       return NextResponse.json({ error: 'Token inválido.' }, { status: 401 });
@@ -76,8 +67,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.json({ error: 'Token inválido.' }, { status: 401 });
   }
 
-  // ── 2. Verifica expiração ─────────────────────────────────────────────────
-  let payload: Record<string, unknown>;
+  let payload: Record<string, any>;
   try {
     payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
   } catch {
@@ -91,13 +81,15 @@ export async function middleware(request: NextRequest) {
     );
   }
 
-  // ── 3. Injeta contexto do usuário nos headers para os route handlers ───────
-  const response = NextResponse.next();
-  response.headers.set('x-user-id',   String(payload.id   ?? payload.userId ?? payload.sub ?? ''));
-  response.headers.set('x-user-name', String(payload.username ?? ''));
-  response.headers.set('x-user-role', String(payload.role ?? 'user'));
-  response.headers.set('x-workspace', String(payload.workspace ?? 'principal'));
-  return response;
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set('x-user-id', String(payload.id ?? payload.userId ?? payload.sub ?? ''));
+  requestHeaders.set('x-user-name', String(payload.username ?? ''));
+  requestHeaders.set('x-user-role', String(payload.role ?? 'user'));
+  requestHeaders.set('x-workspace', String(payload.workspace ?? 'principal'));
+
+  return NextResponse.next({
+    request: { headers: requestHeaders },
+  });
 }
 
 export const config = {

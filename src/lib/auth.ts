@@ -4,9 +4,13 @@ import bcrypt  from 'bcryptjs';
 import jwt     from 'jsonwebtoken';
 import crypto  from 'crypto';
 
-const _secret = process.env.JWT_SECRET;
-if (!_secret) throw new Error('[auth] JWT_SECRET não configurado. Defina a variável de ambiente.');
-const SECRET     = _secret;
+/** Lazy: evita throw no import — `next build` carrega rotas sem .env e quebrava a coleta de dados. */
+function getJwtSecret(): string {
+  const s = process.env.JWT_SECRET;
+  if (!s) throw new Error('[auth] JWT_SECRET não configurado. Defina a variável de ambiente.');
+  return s;
+}
+
 const EXPIRES_IN = parseInt(process.env.JWT_EXPIRES_IN || '28800', 10);
 
 // ── Verificação de senha — suporta bcrypt E sha256 ────────────
@@ -48,12 +52,12 @@ export async function hashPassword(
 
 // ── JWT ───────────────────────────────────────────────────────
 export function generateToken(payload: Record<string, unknown>): string {
-  return jwt.sign(payload, SECRET, { expiresIn: EXPIRES_IN });
+  return jwt.sign(payload, getJwtSecret(), { expiresIn: EXPIRES_IN });
 }
 
 export function verifyToken(token: string): Record<string, unknown> | null {
   try {
-    return jwt.verify(token, SECRET) as Record<string, unknown>;
+    return jwt.verify(token, getJwtSecret()) as Record<string, unknown>;
   } catch {
     return null;
   }

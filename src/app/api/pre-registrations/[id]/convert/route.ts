@@ -1,5 +1,6 @@
-import { createClient } from '@/lib/supabase/server';
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+import { getAdmin } from '@/lib/supabaseAdmin';
+import { getRequestContext } from '@/lib/requestContext';
 
 /**
  * @file src/app/api/pre-registrations/[id]/convert/route.ts
@@ -12,26 +13,19 @@ interface RouteParams {
 }
 
 // POST - Converter lead em cliente
-export async function POST(request: Request, { params }: RouteParams) {
+export async function POST(request: NextRequest, { params }: RouteParams) {
   try {
-    const supabase = await createClient();
+    const { workspace } = getRequestContext(request);
     const { id } = await params;
-    
-    // Obter usuário autenticado
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    
-    if (userError || !user) {
-      return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
-    }
-
     const body = await request.json();
     const { additional_data = {} } = body;
 
     // 1. Buscar o pré-cadastro
-    const { data: preRegistration, error: fetchError } = await supabase
+    const { data: preRegistration, error: fetchError } = await getAdmin()
       .from('pre_registrations')
       .select('*')
       .eq('id', id)
+      .eq('workspace', workspace)
       .eq('deleted_at', null)
       .single();
 
@@ -51,7 +45,10 @@ export async function POST(request: Request, { params }: RouteParams) {
     }
 
     // 2. Criar o cliente com dados do lead + dados adicionais
+    const now = new Date().toISOString();
     const clientPayload: any = {
+      id: crypto.randomUUID(),
+      workspace,
       name: preRegistration.name,
       tel: preRegistration.tel || additional_data.tel || null,
       email: preRegistration.email || additional_data.email || null,
@@ -67,17 +64,12 @@ export async function POST(request: Request, { params }: RouteParams) {
       lng: preRegistration.lng || additional_data.lng || null,
       status: additional_data.status || 'ativo',
       source: 'lead_convertido',
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
+      created_at: now,
+      updated_at: now,
     };
 
-    // Adicionar workspace se existir
-    if ((user as any).workspace_id) {
-      clientPayload.workspace = (user as any).workspace_id;
-    }
-
     // 3. Inserir cliente em transação
-    const { data: client, error: clientError } = await supabase
+    const { data: client, error: clientError } = await getAdmin()
       .from('clients')
       .insert(clientPayload)
       .select()
@@ -86,12 +78,12 @@ export async function POST(request: Request, { params }: RouteParams) {
     if (clientError) throw clientError;
 
     // 4. Atualizar pré-cadastro com referência ao cliente criado
-    const { error: updateError } = await supabase
+    const { error: updateError } = await getAdmin()
       .from('pre_registrations')
       .update({
         converted_client_id: client.id,
         status: 'convertido',
-        updated_at: new Date().toISOString(),
+        updated_at: now,
       })
       .eq('id', id);
 

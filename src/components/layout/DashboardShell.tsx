@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation';
 import {
   Menu, X, MapPin, LayoutDashboard, Users, Package,
   Settings, ShoppingCart, DollarSign, UserCheck,
-  Wrench, ClipboardList, ChevronDown, ChevronRight, Tags
+  Wrench, ClipboardList, ChevronDown, ChevronRight, Tags, UserPlus
 } from 'lucide-react';
 
 interface Props { children: React.ReactNode; }
@@ -17,9 +17,10 @@ const NAV = [
   {
     label: 'Cadastros', icon: Users, group: true,
     children: [
-      { href: '/dashboard/clients',   label: 'Clientes',    icon: Users },
-      { href: '/dashboard/products',  label: 'Produtos',    icon: Package },
-      { href: '/dashboard/referrals', label: 'Indicadores', icon: UserCheck },
+      { href: '/dashboard/clients',            label: 'Clientes',         icon: Users },
+      { href: '/dashboard/pre-registrations',  label: 'Pré-cadastros',    icon: UserPlus },
+      { href: '/dashboard/products',           label: 'Produtos',         icon: Package },
+      { href: '/dashboard/referrals',          label: 'Indicadores',      icon: UserCheck },
     ]
   },
   {

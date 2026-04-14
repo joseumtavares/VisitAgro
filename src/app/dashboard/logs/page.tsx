@@ -27,13 +27,24 @@ export default function LogsPage() {
   const [logs,setLogs]=useState<Log[]>([]);
   const [loading,setLoading]=useState(true);
   const [search,setSearch]=useState('');
+  const [loadError,setLoadError]=useState('');
 
   useEffect(()=>{if (!hydrated) return; if(!isAuthenticated)router.push('/auth/login');},[isAuthenticated,router]);
 
   const load=useCallback(async()=>{
     setLoading(true);
-    const r=await apiFetch('/api/admin/logs'); const j=await r.json();
-    setLogs(j.logs??[]); setLoading(false);
+    setLoadError('');
+    try{
+      const r=await apiFetch('/api/admin/logs');
+      const j=await r.json().catch(()=>({}));
+      if(r.status===403){setLoadError('Acesso restrito a administradores.');setLogs([]);return;}
+      if(!r.ok){setLoadError(j.error||`Erro ao carregar logs (HTTP ${r.status}).`);setLogs([]);return;}
+      setLogs(j.logs??[]);
+    }catch(e:any){
+      setLoadError('Falha de conexão ao carregar logs.');
+    }finally{
+      setLoading(false);
+    }
   },[]);
   useEffect(()=>{load();},[load]);
 
@@ -58,6 +69,12 @@ export default function LogsPage() {
         <div className="relative"><Search className="absolute left-3 top-2.5 w-4 h-4 text-dark-500"/>
           <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar por ação ou usuário..."
             className="w-full bg-dark-800 border border-dark-700 rounded-lg py-2 pl-9 pr-4 text-white text-sm outline-none focus:ring-2 focus:ring-primary-500"/></div>
+
+        {loadError&&(
+          <div className="bg-red-500/10 border border-red-500/50 text-red-400 text-sm px-4 py-3 rounded-lg">
+            🔒 {loadError}
+          </div>
+        )}
 
         {loading?<div className="text-center py-12 text-dark-400">Carregando...</div>
         :filtered.length===0?<div className="text-center py-12 text-dark-400">Nenhum log encontrado</div>

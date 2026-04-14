@@ -28,6 +28,7 @@ export default function CommissionsPage() {
   const [search,setSearch]=useState('');
   const [filterStatus,setFilter]=useState<'todos'|'pendente'|'paga'|'cancelada'>('todos');
   const [confirming,setConfirming]=useState<string|null>(null);
+  const [error,setError]=useState('');
 
   useEffect(()=>{if (!hydrated) return; if(!isAuthenticated)router.push('/auth/login');},[isAuthenticated,router]);
 
@@ -40,11 +41,11 @@ export default function CommissionsPage() {
 
   const confirmPayment=async(id:string)=>{
     setConfirming(id);
-    await apiFetch(`/api/commissions/${id}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({status:'paga'})});
+    setError('');
+    const r=await apiFetch(`/api/commissions/${id}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({status:'paga'})});
+    if(!r.ok){const j=await r.json().catch(()=>({}));setError(j.error||'Erro ao confirmar pagamento.');setConfirming(null);return;}
     await load(); setConfirming(null);
   };
-
-
 
   const filtered=commissions.filter(c=>{
     const ms=(c.referral_name??'').toLowerCase().includes(search.toLowerCase())||(c.client_name??'').toLowerCase().includes(search.toLowerCase());
@@ -94,6 +95,8 @@ export default function CommissionsPage() {
             <option value="cancelada">Canceladas</option>
           </select>
         </div>
+
+        {error&&<div className="bg-red-500/10 border border-red-500 text-red-400 text-sm px-3 py-2 rounded-lg">{error}</div>}
 
         {loading?<div className="text-center py-12 text-dark-400">Carregando...</div>
         :filtered.length===0?<div className="text-center py-12 text-dark-400">Nenhuma comissão encontrada</div>

@@ -73,7 +73,7 @@ export default function DashboardShell({ children }: Props) {
         <div className="p-5 border-b border-dark-700 flex items-center justify-between">
           <div>
             <h1 className="text-white font-bold text-lg leading-tight">🌾 AgroVisita</h1>
-            <p className="text-dark-500 text-xs mt-0.5">Pro v0.9.2</p>
+            <p className="text-dark-500 text-xs mt-0.5">Pro v0.9.4</p>
           </div>
           <button onClick={() => setSidebarOpen(false)} className="lg:hidden text-dark-400 hover:text-white p-1">
             <X className="w-5 h-5" />

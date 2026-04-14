@@ -84,7 +84,9 @@ export default function ClientsPage() {
 
   const remove=async(id:string)=>{
     if(!confirm('Remover este cliente?'))return;
-    await apiFetch(`/api/clients/${id}`,{method:'DELETE'}); await load();
+    const r=await apiFetch(`/api/clients/${id}`,{method:'DELETE'});
+    if(!r.ok){const j=await r.json().catch(()=>({}));setError(j.error||'Erro ao remover cliente.');return;}
+    await load();
   };
 
   const filtered=clients.filter(c=>{

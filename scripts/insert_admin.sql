@@ -4,6 +4,13 @@
 -- Hash bcrypt rounds=12 — gerado offline e verificado
 -- ============================================================
 
+-- ── 0. Workspace padrão ──────────────────────────────────────
+-- DEVE ser executado antes de qualquer INSERT que use workspace = 'principal',
+-- pois todas as tabelas têm FK NOT NULL para workspaces(id).
+INSERT INTO workspaces (id, name, slug, settings, created_at, updated_at)
+VALUES ('principal', 'Principal', 'principal', '{}', now(), now())
+ON CONFLICT (id) DO NOTHING;
+
 INSERT INTO companies (id, name, trade_name)
 VALUES ('00000000-0000-0000-0000-000000000001', 'AgroVisita Pro', 'AgroVisita')
 ON CONFLICT (id) DO NOTHING;

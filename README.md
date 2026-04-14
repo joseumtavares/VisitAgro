@@ -1,8 +1,32 @@
 # VisitAgroPro — Sistema de Gestão de Visitas em Campo
 
+> **Versão atual:** 0.9.4 — 14/04/2026
+> **Status:** ✅ Estável para produção (correções críticas aplicadas)
+
 Sistema web para gerenciamento de visitas comerciais em campo,
 com mapa interativo, cadastro de clientes, controle de vendas,
 comissões e relatórios. Desenvolvido em Next.js 14 + Supabase.
+
+---
+
+## ⚡ Status dos Módulos
+
+| Módulo | Rota | Status |
+|--------|------|--------|
+| Login + brute-force | `/auth/login` | ✅ OK |
+| Clientes | `/dashboard/clients` | ✅ OK |
+| Produtos | `/dashboard/products` | ✅ OK |
+| Indicadores | `/dashboard/referrals` | ✅ OK |
+| Vendas / Pedidos | `/dashboard/sales` | ✅ OK |
+| Comissões indicadores | `/dashboard/commissions` | ✅ OK |
+| Mapa + check-in | `/dashboard/map` | ✅ OK |
+| Configurações | `/dashboard/settings` | ✅ OK |
+| Manutenção | `/dashboard/maintenance` | ✅ OK |
+| Logs administrativos | `/dashboard/logs` | ✅ OK (admin-only) |
+| Comissões representantes | — | 🔴 Pendente |
+| Controle de KM | — | 🟡 Pendente |
+| Ambientes / talhões | — | 🟡 Pendente |
+| Pré-cadastros / leads | — | 🟡 Pendente |
 
 ---
 
@@ -10,7 +34,7 @@ comissões e relatórios. Desenvolvido em Next.js 14 + Supabase.
 
 | Camada | Tecnologia | Versão |
 |--------|-----------|--------|
-| Frontend | Next.js (App Router) | 14.2.3 |
+| Frontend | Next.js (App Router) | 14.2.35 |
 | UI | React | 18 |
 | Estilos | Tailwind CSS | 3.4 |
 | Ícones | Lucide React | 0.378 |
@@ -19,9 +43,9 @@ comissões e relatórios. Desenvolvido em Next.js 14 + Supabase.
 | CEP | ViaCEP API | gratuito |
 | Estado Global | Zustand (persist) | 4.5 |
 | Banco de Dados | Supabase (PostgreSQL 15) | — |
-| Autenticação | JWT HS256 próprio + bcrypt | jose / bcryptjs |
+| Autenticação | JWT HS256 próprio + bcrypt | jsonwebtoken / bcryptjs |
 | Deploy | Vercel (região gru1 — São Paulo) | — |
-| Node.js | Runtime | ≥ 18.17 |
+| Node.js | Runtime | ≥ 20.x &lt; 21 |
 
 ---
 

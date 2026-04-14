@@ -2,53 +2,33 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-export interface AuthUser {
-  id: string;
-  username: string;
-  email?: string;
-  name?: string;
-  role: string;
-  workspace: string;
+interface User {
+  id:         string;
+  username:   string;
+  email?:     string;
+  name?:      string;
+  role:       string;
+  workspace:  string;
   company_id?: string;
 }
 
 interface AuthState {
-  user: AuthUser | null;
-  token: string | null;
+  user:            User | null;
+  token:           string | null;
   isAuthenticated: boolean;
-  login: (user: AuthUser, token: string) => void;
-  logout: () => void;
-  updateUser: (partial: Partial<AuthUser>) => void;
+  login:           (user: User, token: string) => void;
+  logout:          () => void;
 }
 
 export const useAuthStore = create<AuthState>()(
   persist(
     (set) => ({
-      user: null,
-      token: null,
+      user:            null,
+      token:           null,
       isAuthenticated: false,
-
-      login: (user, token) =>
-        set({
-          user,
-          token,
-          isAuthenticated: true,
-        }),
-
-      logout: () =>
-        set({
-          user: null,
-          token: null,
-          isAuthenticated: false,
-        }),
-
-      updateUser: (partial) =>
-        set((state) => ({
-          user: state.user ? { ...state.user, ...partial } : state.user,
-        })),
+      login:  (user, token) => set({ user, token, isAuthenticated: true }),
+      logout: ()            => set({ user: null, token: null, isAuthenticated: false }),
     }),
-    {
-      name: 'visitagropro-auth-v1',
-    }
+    { name: 'visitagropro-auth-v1' }
   )
 );

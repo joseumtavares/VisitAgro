@@ -5,148 +5,135 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 
 ---
 
-## [0.9.1] — 2026-04-09
+## [0.9.4] — 2026-04-14
 
-### 🔒 Segurança (crítico)
+### 🔴 Correções críticas de runtime
 
-- **fix: verificação de assinatura HMAC-SHA256 no middleware**
-  O middleware anterior só decodificava o payload base64 e verificava a expiração (`exp`),
-  sem validar a assinatura do token. Qualquer atacante com acesso ao formato JWT poderia
-  forjar um token com payload arbitrário (ex.: `role: admin`) e passar pela autenticação.
-  Agora o middleware usa `crypto.subtle.verify()` (Web Crypto API, disponível no Edge
-  Runtime) para verificar a assinatura HMAC-SHA256 antes de qualquer outra operação.
-  — `middleware.ts`
+- **fix: seed obrigatório da tabela `workspaces` em `scripts/insert_admin.sql`**
+  Todas as tabelas do schema possuem `FK NOT NULL` para `workspaces(id)`. Sem a row
+  `principal` previamente inserida, qualquer operação de INSERT (clients, products,
+  orders, users, settings) falharia com violação de FK em instalação limpa.
+  O seed idempotente (`ON CONFLICT DO NOTHING`) foi adicionado como **primeira instrução**
+  do arquivo, antes de qualquer outro INSERT.
+  — `scripts/insert_admin.sql`
 
-- **fix: remoção do JWT_SECRET hardcoded em auth.ts**
-  Havia um fallback `|| 'TROQUE-EM-PRODUCAO-...'` na constante `SECRET`. Se a variável
-  `JWT_SECRET` não estivesse configurada na Vercel, a aplicação subia com um segredo
-  público, permitindo forjar tokens válidos. Agora a aplicação lança exceção imediata
-  se a variável não estiver presente — falha rápida e explícita em vez de falha silenciosa.
-  — `src/lib/auth.ts`
+### 🔒 Segurança
+
+- **fix: `/api/auth/login` migrado para `getAdmin()` + proteção de brute-force**
+  A rota criava sua própria instância de `createClient` (Supabase) a cada request,
+  contornando o singleton e ignorando os campos `failed_logins`, `locked_until` e
+  `last_login` do schema. Agora:
+  - Usa `getAdmin()` do módulo centralizado
+  - Verifica `locked_until` antes de processar a senha
+  - Incrementa `failed_logins` a cada tentativa inválida
+  - Bloqueia o usuário por 15 min após 5 falhas consecutivas (`locked_until`)
+  - Reseta `failed_logins` e atualiza `last_login` no login bem-sucedido
+  - Remove campos sensíveis (`pass_hash`, `hash_algo`, `failed_logins`,
+    `locked_until`, `last_login`) da resposta ao cliente
+  - Registra evento em `audit_log` via `auditLog()`
+  — `src/app/api/auth/login/route.ts`
+
+- **fix: `/api/admin/logs` restrito a `role = 'admin'`**
+  Qualquer usuário autenticado conseguia acessar todos os logs de auditoria do sistema.
+  Agora a rota usa `getRequestContext()` para verificar o role e retorna `403` para
+  usuários não-admin. Contrato `{ logs: [...] }` preservado.
+  — `src/app/api/admin/logs/route.ts`
+
+- **fix: `/api/auth/change-password` valida workspace do usuário**
+  A rota buscava o usuário apenas por `id`, sem validar `workspace` nem `active`.
+  Em teoria, um token de um workspace poderia alterar senha de usuário de outro.
+  Agora usa `getRequestContext()` e filtra por `id + workspace + active = true`.
+  O update também aplica o filtro de workspace. Adicionado `auditLog` no sucesso.
+  — `src/app/api/auth/change-password/route.ts`
+
+- **fix: `supabaseAdmin.ts` marcado como server-only**
+  Adicionado `import 'server-only'` para impedir que `getAdmin()` (que expõe a
+  `SUPABASE_SERVICE_ROLE_KEY`) seja importado acidentalmente em componentes
+  client-side e vaze no bundle público.
+  — `src/lib/supabaseAdmin.ts`
 
 ### 🐛 Correções de bug
 
-- **fix: fetch() puro substituído por apiFetch() em clients/page.tsx**
-  A função `save()` usava `fetch()` sem o header `Authorization`, recebendo 401 do
-  middleware. Cadastro e edição de clientes falhavam silenciosamente ou redirecionavam
-  para o login. Substituído por `apiFetch()` que injeta o token automaticamente.
+- **fix: `apiFetch` não força `Content-Type: application/json` em FormData**
+  O helper anterior sempre injetava `Content-Type: application/json`, o que corromperia
+  uploads `multipart/form-data` (fotos de visitas, comprovantes de comissão). Agora
+  o header só é injetado quando o body **não** é uma instância de `FormData`.
+  Headers existentes no `init` também não são mais sobrescritos.
+  — `src/lib/apiFetch.ts`
+
+- **fix: `remove()` em clients silenciava erros de DELETE**
+  A função recarregava a lista mesmo quando o backend retornava erro (ex.: FK
+  constraint). O registro continuava no banco mas desaparecia temporariamente da
+  UI. Agora verifica `r.ok` e exibe `setError()` com a mensagem do backend.
   — `src/app/dashboard/clients/page.tsx`
 
-- **fix: fetch() puro substituído por apiFetch() em referrals/page.tsx**
-  Mesmo problema: `save()` de indicadores usava `fetch()` puro. Cadastro e edição
-  de indicadores falhavam com 401.
+- **fix: `remove()` em referrals silenciava erros de DELETE**
+  Mesmo problema da página de clientes.
   — `src/app/dashboard/referrals/page.tsx`
 
-- **fix: race condition na geração de order_number**
-  O código contava linhas da tabela (`SELECT COUNT(*)`) para atribuir o número do pedido.
-  Duas requisições simultâneas gerariam o mesmo número. O schema v09 já possui
-  `CREATE SEQUENCE order_number_seq` e o trigger `trg_set_order_number` que atribui o
-  número automaticamente e de forma atômica no banco. Removidas as 3 linhas de contagem
-  manual; o insert não passa mais `order_number` — o trigger cuida disso.
-  — `src/app/api/orders/route.ts`
+- **fix: `confirmPayment()` em commissions silenciava erro do PUT**
+  A confirmação de pagamento de comissão não verificava a resposta do servidor.
+  Adicionado estado `error`, verificação de `r.ok` e early return em caso de falha.
+  — `src/app/dashboard/commissions/page.tsx`
 
-### ♻️ Refatorações
+- **fix: logs/page.tsx não tratava resposta 403 nem erros de carregamento**
+  A função `load()` atribuía `j.logs` sem verificar `r.ok`, causando falha silenciosa.
+  Agora trata 403 com mensagem "Acesso restrito a administradores" e demais erros com
+  mensagem genérica visível na tela.
+  — `src/app/dashboard/logs/page.tsx`
 
-- **refactor: unificação do cliente Supabase admin**
-  `clients/route.ts`, `clients/[id]/route.ts` e `products/route.ts` tinham função
-  `getAdmin()` inline duplicada que criava um novo `SupabaseClient` a cada requisição
-  (sem singleton). Substituídos pelo `import { getAdmin } from '@/lib/supabaseAdmin'`
-  que reutiliza o singleton e mantém consistência com os demais routes.
-  — `src/app/api/clients/route.ts`
-  — `src/app/api/clients/[id]/route.ts`
-  — `src/app/api/products/route.ts`
+### 🏗️ Qualidade de código
 
-- **refactor: mensagens de erro internas não expostas ao cliente**
-  `clients/route.ts` agora retorna mensagens genéricas ao cliente e loga o detalhe
-  internamente via `console.error`, evitando vazar nomes de colunas ou queries do
-  Supabase para o browser.
-
-### 📦 Dependências e configuração
-
-- **chore: upgrade next 14.2.3 → 14.2.35**
-  Versão 14.2.3 continha vulnerabilidade de segurança divulgada em dezembro de 2025
-  (ver https://nextjs.org/blog/security-update-2025-12-11). Atualizado para 14.2.35,
-  última versão da linha 14.x com todos os patches de segurança aplicados.
-  `eslint-config-next` atualizado junto para manter compatibilidade.
-
-- **chore: engines.node fixado em "20.x"**
-  O valor anterior `>=18.17.0` causava warning da Vercel e poderia fazer upgrade
-  automático para um novo major Node.js. Fixado em `20.x` (LTS ativo).
-
-- **chore: remoção de gerar_projeto.js do bundle**
-  Script de scaffolding (29 KB) estava na raiz do projeto e seria incluído no deploy.
-  Não é carregado pelo Next.js, mas expunha detalhes da arquitetura interna.
-
-- **chore: .gitignore criado**
-  Adicionado `.gitignore` cobrindo `node_modules`, `.next`, `.env.local` e artefatos
-  de build para evitar commits acidentais de dados sensíveis.
-
-- **docs: .env.example atualizado**
-  Adicionadas instruções claras sobre JWT_SECRET ser obrigatório, instrução de geração
-  com `openssl rand -base64 48` e nota de que `SUPABASE_SERVICE_ROLE_KEY` nunca deve
-  ser exposta no browser.
+- **refactor: `src/types/index.ts` sincronizado com o schema atual**
+  - `User`: removido `pass_hash` (campo sensível nunca deve trafegar ao frontend);
+    adicionados `name`, `workspace`, `company_id`, `last_login`, `updated_at`
+  - `Client`: adicionados `tel2`, `category`, `maps_link`, `zip_code`, `obs`,
+    `indicado`, `deleted_at`, `updated_at`
+  - `Product`: adicionados `cost_price`, `model`, `color`, `sku`, `finame_code`,
+    `ncm_code`, `unit`, `deleted_at`, `updated_at`
+  - `Order`: adicionados `version`, `commission_value`, `commission_type`,
+    `commission_pct`, `discount`, `environment_id`, `deleted_at`, `updated_at`,
+    relações opcionais `clients` e `referrals`
+  - `Commission`: campos completos alinhados ao schema (`referral_name`,
+    `client_name`, `order_date`, `order_total`, `receipt_photo_ids`, `workspace`)
+  - Adicionadas interfaces: `OrderItem`, `Referral`, `Visit`, `Category`, `Company`
+  - Adicionados tipos: `CommissionStatus`, `ActivityType`
+  — `src/types/index.ts`
 
 ---
 
-## [0.9.0] — 2026-04-09
+## [0.9.3] — 2026-04-10
 
-### Adicionado
-- Schema completo v09 com `CREATE SEQUENCE order_number_seq` e trigger
-  `trg_set_order_number` para geração atômica de números de pedido
-- API de categorias (`/api/categories`)
-- `schema_completo_v09.sql` substituindo scripts parciais anteriores
+### Correções críticas de build/runtime
 
----
+- fix: criação de `src/app/api/visits/route.ts` (arquivo não existia no repo)
+- fix: resolução do erro `Unexpected token '<', '<!DOCTYPE'` no check-in
+- fix: atualização de `products/page.tsx` com formulário completo
 
-## [0.8.1] — 2026-04-09
+### Novidades
 
-### Corrigido
-- Centralização de todas as chamadas fetch() das páginas do dashboard em `apiFetch()`
-  para injeção automática do token JWT (correção parcial — clients e referrals save()
-  permaneciam com fetch() puro, corrigidos na v0.9.1)
+- feat: modal de check-in no mapa com agendamento de próxima visita
+- feat: componente `GpsPickerMap.tsx`
+- feat: aba de categorias em Configurações
+- feat: menu renomeado para "Comissões Indicadores"
 
 ---
 
-## [0.8.0] — 2026-04-08
+## [0.9.2] — 2026-04-09
 
-### Adicionado
-- `apiFetch.ts` — wrapper autenticado sobre fetch()
-- Fix: `.maybeSingle()` no login (era `.single()`, crashava com PGRST116)
-- Fix: extração de `items` do body antes do insert em `orders` (coluna inexistente)
+### Segurança (crítico)
 
----
+- fix: verificação de assinatura HMAC-SHA256 no middleware
+- fix: remoção do JWT_SECRET hardcoded em auth.ts
 
-## [0.7.0] — 2026-04-07
+### Correções de bug
 
-### Adicionado
-- `supabaseAdmin.ts` com singleton e `auditLog()`
-- Geração automática de comissão ao marcar pedido como "pago"
-- Proteção JWT em todas as rotas `/api/*` via `middleware.ts`
+- fix: fetch() puro substituído por apiFetch() em clients, referrals
+- fix: race condition na geração de order_number
+- fix: hydration guard nas páginas do dashboard
 
 ---
 
-## [0.6.0] — 2026-04-06
+## [0.9.1] — 2026-04-08
 
-### Adicionado
-- Dashboard com KPIs, mapa compacto, totalizadores de vendas e comissões
-- Módulo de Indicadores com dados bancários e chave Pix
-- Módulo de Manutenção: PIN de segurança, reprocessamento de comissões, limpeza
-
----
-
-## [0.5.0] — 2026-04-05
-
-### Adicionado
-- Mapa interativo (Leaflet + OpenStreetMap) com marcadores por status
-- Busca de endereço por CEP (ViaCEP) e geocoding via Nominatim
-- Edição inline de clientes no popup do mapa
-
----
-
-## [0.1.0] — 2026-04-03
-
-### Adicionado
-- Projeto inicial: Next.js 14 App Router + Supabase + Tailwind CSS
-- Login JWT (HS256) com suporte a bcrypt e SHA-256 legacy
-- CRUD de Clientes, Produtos, Pedidos e Comissões
-- Deploy na Vercel (região gru1)
+- Versão inicial funcional com login, clientes, produtos, vendas, mapa e comissões

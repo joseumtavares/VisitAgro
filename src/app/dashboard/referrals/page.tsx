@@ -50,7 +50,9 @@ export default function ReferralsPage() {
   };
   const remove=async(id:string)=>{
     if(!confirm('Remover este indicador?'))return;
-    await apiFetch(`/api/referrals/${id}`,{method:'DELETE'}); await load();
+    const r=await apiFetch(`/api/referrals/${id}`,{method:'DELETE'});
+    if(!r.ok){const j=await r.json().catch(()=>({}));setError(j.error||'Erro ao remover indicador.');return;}
+    await load();
   };
   const filtered=referrals.filter(r=>r.name.toLowerCase().includes(search.toLowerCase())||r.tel?.includes(search));
   const f=(k:keyof Referral,v:any)=>setForm(p=>({...p,[k]:v}));

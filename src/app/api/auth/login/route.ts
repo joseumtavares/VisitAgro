@@ -37,10 +37,12 @@ export async function POST(request: NextRequest) {
     }
 
     if (!user) {
+      // Delay anti-timing para não revelar existência do usuário
       await sleep(300 + Math.random() * 200);
       return NextResponse.json({ error: 'Credenciais inválidas' }, { status: 401 });
     }
 
+    // Verificar bloqueio por tentativas inválidas
     if (user.locked_until && new Date(user.locked_until).getTime() > Date.now()) {
       return NextResponse.json(
         { error: 'Usuário temporariamente bloqueado. Tente novamente mais tarde.' },
@@ -76,6 +78,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Credenciais inválidas' }, { status: 401 });
     }
 
+    // Login bem-sucedido: resetar contadores e registrar last_login
     await admin
       .from('users')
       .update({
@@ -87,14 +90,15 @@ export async function POST(request: NextRequest) {
       .eq('id', user.id);
 
     const token = generateToken({
-      id: user.id,
-      username: user.username,
-      email: user.email,
-      role: user.role,
+      id:        user.id,
+      username:  user.username,
+      email:     user.email,
+      role:      user.role,
       workspace: user.workspace ?? 'principal',
     });
 
-    const { pass_hash, hash_algo, failed_logins, locked_until, ...safeUser } = user;
+    // Remove campos sensíveis da resposta
+    const { pass_hash, hash_algo, failed_logins, locked_until, last_login, ...safeUser } = user;
 
     await auditLog(
       '[AUTH] Login realizado',
@@ -104,6 +108,7 @@ export async function POST(request: NextRequest) {
     );
 
     return NextResponse.json({ user: safeUser, token });
+
   } catch (error: any) {
     console.error('[login] Erro inesperado:', error?.message ?? error);
     return NextResponse.json(

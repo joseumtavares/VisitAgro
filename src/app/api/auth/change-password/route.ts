@@ -1,3 +1,4 @@
+// POST /api/auth/change-password — troca senha do usuário autenticado
 import { NextRequest, NextResponse } from 'next/server';
 import { getAdmin, auditLog } from '@/lib/supabaseAdmin';
 import { verifyPassword, hashPassword } from '@/lib/auth';
@@ -11,21 +12,15 @@ export async function POST(req: NextRequest) {
     if (!userId) {
       return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
     }
-
     if (!currentPassword || !newPassword) {
-      return NextResponse.json(
-        { error: 'Informe a senha atual e a nova.' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Informe a senha atual e a nova.' }, { status: 400 });
     }
-
     if (newPassword.length < 6) {
       return NextResponse.json(
         { error: 'Nova senha deve ter pelo menos 6 caracteres.' },
         { status: 400 }
       );
     }
-
     if (currentPassword === newPassword) {
       return NextResponse.json(
         { error: 'A nova senha deve ser diferente da senha atual.' },
@@ -37,7 +32,7 @@ export async function POST(req: NextRequest) {
 
     const { data: user, error: userError } = await admin
       .from('users')
-      .select('id,workspace,pass_hash,active')
+      .select('id,pass_hash')
       .eq('id', userId)
       .eq('workspace', workspace)
       .eq('active', true)
@@ -46,7 +41,6 @@ export async function POST(req: NextRequest) {
     if (userError) {
       return NextResponse.json({ error: userError.message }, { status: 500 });
     }
-
     if (!user) {
       return NextResponse.json({ error: 'Usuário não encontrado.' }, { status: 404 });
     }
@@ -73,11 +67,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: updateError.message }, { status: 500 });
     }
 
-    await auditLog(
-      '[SEGURANÇA] Senha alterada',
-      { workspace },
-      userId
-    );
+    await auditLog('[SEGURANÇA] Senha alterada', { workspace }, userId);
 
     return NextResponse.json({ ok: true });
   } catch (e: any) {

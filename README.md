@@ -1,275 +1,91 @@
-# VisitAgroPro — Sistema de Gestão de Visitas em Campo
+# VisitAgroPro
 
-> **Versão atual:** 0.9.4 — 14/04/2026
-> **Status:** ✅ Estável para produção (correções críticas aplicadas)
+> Sistema de gestão de visitas em campo com mapa interativo, clientes, produtos, pedidos, comissões e relatórios.
 
-Sistema web para gerenciamento de visitas comerciais em campo,
-com mapa interativo, cadastro de clientes, controle de vendas,
-comissões e relatórios. Desenvolvido em Next.js 14 + Supabase.
+![Status](https://img.shields.io/badge/status-est%C3%A1vel%20para%20produ%C3%A7%C3%A3o-2ea44f)
+![Versão](https://img.shields.io/badge/vers%C3%A3o-0.9.4-0969da)
+![Stack](https://img.shields.io/badge/stack-Next.js%2014%20%2B%20Supabase-6f42c1)
 
----
+## Visão rápida
 
-## ⚡ Status dos Módulos
+O **VisitAgroPro** foi projetado para organizar operações comerciais em campo, centralizando cadastro de clientes, pedidos, comissões, indicadores e visitas em um único sistema web.
 
-| Módulo | Rota | Status |
-|--------|------|--------|
-| Login + brute-force | `/auth/login` | ✅ OK |
-| Clientes | `/dashboard/clients` | ✅ OK |
-| Produtos | `/dashboard/products` | ✅ OK |
-| Indicadores | `/dashboard/referrals` | ✅ OK |
-| Vendas / Pedidos | `/dashboard/sales` | ✅ OK |
-| Comissões indicadores | `/dashboard/commissions` | ✅ OK |
-| Mapa + check-in | `/dashboard/map` | ✅ OK |
-| Configurações | `/dashboard/settings` | ✅ OK |
-| Manutenção | `/dashboard/maintenance` | ✅ OK |
-| Logs administrativos | `/dashboard/logs` | ✅ OK (admin-only) |
-| Comissões representantes | — | 🔴 Pendente |
-| Controle de KM | — | 🟡 Pendente |
-| Ambientes / talhões | — | 🟡 Pendente |
-| Pré-cadastros / leads | — | 🟡 Pendente |
+### Destaques
 
----
+- Login com JWT e proteção de rotas
+- Dashboard com indicadores operacionais
+- Mapa interativo com check-in e geolocalização
+- CRUD completo de clientes, produtos e indicadores
+- Gestão de pedidos com múltiplos itens
+- Controle de comissões e auditoria administrativa
+- Deploy pensado para **Next.js + Supabase + Vercel**
 
-## 🚀 Stack Tecnológica
+## Navegação da documentação
 
-| Camada | Tecnologia | Versão |
-|--------|-----------|--------|
-| Frontend | Next.js (App Router) | 14.2.35 |
-| UI | React | 18 |
-| Estilos | Tailwind CSS | 3.4 |
-| Ícones | Lucide React | 0.378 |
-| Mapas | Leaflet + react-leaflet | 1.9 / 4.2 |
-| Geocodificação | Nominatim (OpenStreetMap) | gratuito |
-| CEP | ViaCEP API | gratuito |
-| Estado Global | Zustand (persist) | 4.5 |
-| Banco de Dados | Supabase (PostgreSQL 15) | — |
-| Autenticação | JWT HS256 próprio + bcrypt | jsonwebtoken / bcryptjs |
-| Deploy | Vercel (região gru1 — São Paulo) | — |
-| Node.js | Runtime | ≥ 20.x &lt; 21 |
+| Página | Objetivo |
+|---|---|
+| [Central da documentação](./docs/index.md) | Página principal da documentação |
+| [Visão geral do sistema](./docs/visao-geral.md) | Módulos, stack, estrutura e deploy |
+| [Setup do banco](./docs/setup-banco.md) | Instalação limpa e pontos críticos do schema |
+| [Changelog](./docs/changelog.md) | Histórico de versões do projeto |
+| [Release 0.9.4](./docs/updates-v094.md) | Resumo executivo das últimas correções |
+| [Auditoria técnica](./docs/auditoria-tecnica.md) | Resumo do diagnóstico schema × código |
 
----
+## Status atual
 
-## 📁 Estrutura de Diretórios
+### Implementado
 
-```
-visitagropro/
-├── src/
-│   ├── app/
-│   │   ├── auth/login/page.tsx           ← Tela de login
-│   │   ├── dashboard/
-│   │   │   ├── page.tsx                  ← Dashboard com stats e mapa rápido
-│   │   │   ├── map/page.tsx              ← Mapa completo de clientes
-│   │   │   ├── clients/page.tsx          ← CRUD clientes + geocodificação
-│   │   │   ├── products/page.tsx         ← CRUD produtos + categorias
-│   │   │   ├── sales/page.tsx            ← Pedidos + itens + comissões
-│   │   │   ├── commissions/page.tsx      ← Comissões pendentes/pagas
-│   │   │   ├── referrals/page.tsx        ← Indicadores + dados bancários
-│   │   │   ├── maintenance/page.tsx      ← Reprocessamento + limpeza
-│   │   │   ├── logs/page.tsx             ← Audit log do sistema
-│   │   │   └── settings/page.tsx         ← Empresa, perfil, senha
-│   │   └── api/
-│   │       ├── auth/login/route.ts        ← POST (público)
-│   │       ├── auth/change-password/      ← POST (JWT)
-│   │       ├── clients/route.ts           ← GET/POST
-│   │       ├── clients/[id]/route.ts      ← GET/PUT/DELETE
-│   │       ├── products/route.ts          ← GET/POST
-│   │       ├── products/[id]/route.ts     ← GET/PUT/DELETE
-│   │       ├── orders/route.ts            ← GET/POST
-│   │       ├── orders/[id]/route.ts       ← GET/PUT/DELETE
-│   │       ├── commissions/route.ts       ← GET
-│   │       ├── commissions/[id]/route.ts  ← PUT (pagar)
-│   │       ├── referrals/route.ts         ← GET/POST
-│   │       ├── referrals/[id]/route.ts    ← PUT/DELETE
-│   │       ├── categories/route.ts        ← GET/POST/PUT/DELETE
-│   │       ├── cep/[cep]/route.ts         ← GET (proxy ViaCEP)
-│   │       ├── settings/route.ts          ← GET
-│   │       ├── settings/company/route.ts  ← POST
-│   │       └── admin/
-│   │           ├── cleanup/route.ts       ← POST
-│   │           ├── logs/route.ts          ← GET
-│   │           ├── pin/route.ts           ← POST
-│   │           └── reprocess/route.ts     ← POST
-│   ├── components/
-│   │   ├── layout/DashboardShell.tsx      ← Sidebar + navegação
-│   │   └── map/
-│   │       ├── InteractiveMap.tsx         ← Mapa Leaflet completo
-│   │       └── LeafletProvider.tsx        ← SSR-safe wrapper
-│   ├── lib/
-│   │   ├── apiFetch.ts                   ← fetch autenticado (injeta JWT)
-│   │   ├── auth.ts                       ← verifyPassword, JWT
-│   │   ├── supabase.ts                   ← cliente anon (client)
-│   │   ├── supabaseAdmin.ts              ← service_role (server-only)
-│   │   └── commissionHelper.ts           ← geração de comissões
-│   ├── store/authStore.ts                ← Zustand auth state
-│   └── types/index.ts
-├── scripts/
-│   ├── generate-password-hash.js
-│   ├── generate-hash-standalone.js
-│   └── insert_admin.sql
-├── schema_completo_v09.sql               ← Schema para projeto novo
-├── schema_fix.sql                        ← Migration para banco existente
-├── middleware.ts                         ← Proteção JWT de /api/*
-├── package.json
-├── tailwind.config.js
-├── tsconfig.json
-├── vercel.json
-└── .env.example
-```
+- Login, autenticação e controle de sessão
+- Clientes, produtos, pedidos e indicadores
+- Mapa com check-in
+- Configurações, manutenção e logs administrativos
 
----
+### Em andamento
 
-## 🔑 API Routes
+- Comissões de representantes
+- Histórico de visitas em interface dedicada
 
-### Autenticação (pública)
-| Método | Rota | Descrição |
-|--------|------|-----------|
-| POST | `/api/auth/login` | Login → retorna JWT (username ou email) |
-| POST | `/api/auth/change-password` | Troca senha (requer JWT) |
+### Planejado
 
-### Clientes / Produtos / Pedidos
-| Método | Rota | Descrição |
-|--------|------|-----------|
-| GET/POST | `/api/clients` | Listar / criar |
-| GET/PUT/DELETE | `/api/clients/:id` | Buscar / atualizar / excluir |
-| GET/POST | `/api/products` | Listar / criar |
-| GET/PUT/DELETE | `/api/products/:id` | Buscar / atualizar / desativar |
-| GET/POST | `/api/orders` | Listar / criar (+ itens em order_items) |
-| GET/PUT/DELETE | `/api/orders/:id` | Buscar / atualizar status / cancelar |
-| GET/POST/PUT/DELETE | `/api/categories` | CRUD categorias |
+- Controle de KM
+- Ambientes e talhões
+- Pré-cadastros e leads
+- Uploads, PDFs e filtros mais avançados
 
-### Comercial
-| Método | Rota | Descrição |
-|--------|------|-----------|
-| GET | `/api/commissions` | Comissões do indicador |
-| PUT | `/api/commissions/:id` | Pagar comissão |
-| GET/POST | `/api/referrals` | Listar / criar indicadores |
-| PUT/DELETE | `/api/referrals/:id` | Atualizar / desativar |
+## Início rápido
 
-### Utilitários
-| Método | Rota | Descrição |
-|--------|------|-----------|
-| GET | `/api/cep/:cep` | Proxy ViaCEP |
-| GET | `/api/settings` | Config + empresa |
-| POST | `/api/settings/company` | Salvar empresa |
-| GET | `/api/admin/logs` | 200 registros audit_log |
-| POST | `/api/admin/reprocess` | Reprocessar comissões |
-| POST | `/api/admin/cleanup` | Limpar dados por grupo |
-| POST | `/api/admin/pin` | Configurar PIN admin |
+### 1. Clonar e instalar
 
-> Todas as rotas exceto `/api/auth/login` exigem `Authorization: Bearer <token>`
-
----
-
-## 🛡️ Segurança
-
-### Como funciona o JWT
-```
-Login:
-  POST /api/auth/login
-  ↓ busca user por username/email (maybeSingle — sem crash)
-  ↓ verifyPassword(plaintext, bcrypt_hash)
-  ↓ generateToken({ id, username, email, role, workspace })
-  ↓ { user, token } → Zustand persiste em localStorage
-
-Requisições autenticadas:
-  apiFetch('/api/xxx') → injeta Authorization: Bearer <token>
-  ↓ middleware.ts (Edge Runtime)
-  ↓ decode JWT (sem bcrypt — rápido)
-  ↓ verifica expiração
-  ↓ injeta x-user-id, x-user-name, x-user-role nos headers
-  ↓ handler recebe dados validados
-```
-
-### Variáveis de ambiente
 ```bash
-# .env.local (nunca commitar)
-NEXT_PUBLIC_SUPABASE_URL=https://xxxx.supabase.co
-SUPABASE_SERVICE_ROLE_KEY=eyJhbGci...
-JWT_SECRET=string-aleatoria-min-32-chars
-JWT_EXPIRES_IN=28800
+git clone https://github.com/joseumtavares/VisitAgro.git
+cd VisitAgro
+npm install
 ```
 
-Gere o JWT_SECRET:
+### 2. Configurar variáveis
+
+```bash
+cp .env.example .env.local
+```
+
+Preencha as variáveis de ambiente e depois gere um segredo forte para o JWT.
+
 ```bash
 node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 ```
 
----
+### 3. Preparar banco e rodar
 
-## ⚙️ Deploy
+Siga o passo a passo completo em [Setup do banco](./docs/setup-banco.md).
 
-### 1. Supabase
-```sql
--- Projeto novo: executar inteiro
-schema_completo_v09.sql
-
--- Banco existente: executar migration segura
-schema_fix.sql
-```
-
-Login padrão após schema: `admin` / `admin123`
-**Troque imediatamente em** `/dashboard/settings`
-
-### 2. Vercel
 ```bash
-# Instalar Vercel CLI (opcional)
-npm i -g vercel
-vercel --prod
-
-# Ou via dashboard: importar repositório GitHub
-# Configurar 4 variáveis de ambiente antes do deploy
-```
-
-### 3. Desenvolvimento local
-```bash
-npm install
-cp .env.example .env.local
-# Preencher variáveis
 npm run dev
-# http://localhost:3000
 ```
 
----
+## Estrutura sugerida para a home do repositório
 
-## ✅ Status das Funcionalidades
+Este README foi pensado para ficar **mais limpo, visual e escaneável**, enquanto a documentação detalhada fica concentrada na pasta `docs/`. Isso deixa a página inicial do repositório mais moderna e melhora a descoberta do conteúdo.
 
-### 🟢 Implementado e funcionando
-- Login JWT + bcrypt, proteção de rotas
-- Dashboard com stats, cards e mapa rápido
-- Mapa completo: marcadores coloridos por status, popups com edição inline, filtros, busca Nominatim, geolocalização do usuário
-- Clientes: CRUD, geocodificação, CEP automático, lat/lng
-- Produtos: CRUD, modelo, cor, categoria, comissão do representante
-- Categorias: criar, editar, excluir (soft delete)
-- Pedidos: múltiplos itens, cálculo automático, comissão ao marcar como pago
-- Comissões do indicador: listar, filtrar, pagar com 1 clique
-- Indicadores: CRUD completo com dados bancários
-- Manutenção: reprocessamento, limpeza de dados, PIN de segurança
-- Audit log: visualização de todas as ações
-- Configurações: empresa, perfil, troca de senha
+## Próximo passo recomendado
 
-### 🟡 Parcialmente implementado
-- Histórico de visitas por cliente (tabela existe, interface na fila)
-- Comissões do representante (tabela existe, interface não criada)
-
-### 🔴 Não implementado ainda
-- Upload de fotos (produtos, comprovantes)
-- PDF/impressão de pedido
-- Desconto por pedido (campo no banco, falta campo no formulário)
-- Filtro de comissões por período
-
----
-
-## 📝 Histórico de Correções
-
-### v0.9 — 2026-04
-| Tipo | Bug | Solução |
-|------|-----|---------|
-| 🔴 Crítico | Todos os cards do dashboard redirecionavam para login | `apiFetch.ts` injeta JWT em todas as chamadas |
-| 🔴 Crítico | Mapa trava/congela após salvar coordenadas | `key="main-map"` no `MapContainer` |
-| 🔴 Crítico | Redirect para login imediatamente após fazer login | Hydration guard em todas as 9 páginas |
-| 🔴 Crítico | Vendas: "could not find items column" | Destructuring `{ items, ...orderData }` antes do INSERT |
-| 🔴 Crítico | Login falha com hash bcrypt | `bcryptjs` adicionado às deps + import direto |
-| 🔴 Crítico | Admin não consegue entrar | Hash real em `insert_admin.sql` |
-| 🟡 Médio | Rotas API públicas (sem middleware) | `middleware.ts` criado |
-| 🟡 Médio | Categorias sem edição/exclusão | `PUT` + `DELETE` em `/api/categories` |
-| 🟡 Médio | Settings era placeholder | Página completa com empresa + senha |
+Ative o **GitHub Pages** usando a pasta `docs/` como origem para transformar essa documentação em um mini site navegável.

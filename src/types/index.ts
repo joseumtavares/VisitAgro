@@ -228,3 +228,22 @@ export interface Company {
   created_at:  string;
   updated_at?: string;
 }
+
+// ── PreRegistration (Lead) ─────────────────────────────────────
+export interface PreRegistration {
+  id:                   string;
+  workspace?:           string;
+  name:                 string;
+  tel?:                 string | null;
+  email?:               string | null;
+  interest?:            string | null;
+  source?:              string | null;
+  status:               'novo' | 'contatado' | 'qualificado' | 'convertido' | 'perdido';
+  obs?:                 string | null;
+  lat?:                 number | null;
+  lng?:                 number | null;
+  converted_client_id?: string | null;
+  deleted_at?:          string | null;
+  created_at:           string;
+  updated_at?:          string;
+}

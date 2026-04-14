@@ -207,9 +207,16 @@ CREATE TABLE public.pre_registrations (
   converted_client_id text,
   created_at timestamp with time zone DEFAULT now(),
   updated_at timestamp with time zone DEFAULT now(),
+  referral_id text,
+  maps_link text,
+  lat double precision CHECK (lat IS NULL OR lat >= '-90'::integer::double precision AND lat <= 90::double precision),
+  lng double precision CHECK (lng IS NULL OR lng >= '-180'::integer::double precision AND lng <= 180::double precision),
+  point_reference text,
+  deleted_at timestamp with time zone,
   CONSTRAINT pre_registrations_pkey PRIMARY KEY (id),
   CONSTRAINT pre_registrations_converted_client_id_fkey FOREIGN KEY (converted_client_id) REFERENCES public.clients(id),
-  CONSTRAINT pre_registrations_workspace_fkey FOREIGN KEY (workspace) REFERENCES public.workspaces(id)
+  CONSTRAINT pre_registrations_workspace_fkey FOREIGN KEY (workspace) REFERENCES public.workspaces(id),
+  CONSTRAINT pre_registrations_referral_id_fkey FOREIGN KEY (referral_id) REFERENCES public.referrals(id)
 );
 CREATE TABLE public.products (
   id text NOT NULL DEFAULT (gen_random_uuid())::text,

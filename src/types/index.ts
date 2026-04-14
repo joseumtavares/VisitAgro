@@ -7,6 +7,7 @@ export type UserRole     = 'admin' | 'user' | 'manager';
 export type ClientStatus = 'interessado' | 'visitado' | 'agendado' | 'comprou' | 'naointeressado' | 'retornar' | 'outro';
 export type OrderStatus  = 'pendente' | 'aprovado' | 'pago' | 'cancelado' | 'faturado';
 export type VisitStatus  = 'agendado' | 'realizado' | 'cancelado' | 'nao_compareceu';
+export type PreRegistrationStatus =   | 'novo'  | 'contatado'   | 'qualificado'  | 'convertido'   | 'perdido';
 export type CommissionStatus = 'pendente' | 'paga' | 'cancelada';
 export type ActivityType = 'Visita' | 'Ligação' | 'WhatsApp' | 'Email' | 'Reunião';
 
@@ -175,7 +176,30 @@ export interface Visit {
   created_at:     string;
   updated_at?:    string;
 }
+// ── PreRegistration ─────────────────────────────────────────────
+export interface PreRegistration {
+  id: string;
+  workspace?: string;
+  name: string;
+  tel?: string | null;
+  email?: string | null;
+  interest?: string | null;
+  source?: string | null;
+  status: PreRegistrationStatus;
+  obs?: string | null;
+  converted_client_id?: string | null;
 
+  // campos adicionados na migration nova
+  referral_id?: string | null;
+  maps_link?: string | null;
+  lat?: number | null;
+  lng?: number | null;
+  point_reference?: string | null;
+  deleted_at?: string | null;
+
+  created_at: string;
+  updated_at: string;
+}
 // ── Category ──────────────────────────────────────────────────
 export interface Category {
   id:           string;

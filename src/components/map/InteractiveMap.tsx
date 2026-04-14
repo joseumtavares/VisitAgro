@@ -159,7 +159,7 @@ function MapSearchBar() {
 }
 
 // ── FASE B: MapClickHandler para posicionamento de novo lead ────
-// Ativado apenas quando placingLead = true. Passa o clique de volta
+// Ativado apenas qu/ando placingLead = true. Passa o clique de volta
 // ao componente pai para redirecionar à página de pré-cadastros.
 function LeadPlacementHandler({ active, onMapClick }: {
   active: boolean;
@@ -389,8 +389,8 @@ export default function InteractiveMap({ compact = false }: { compact?: boolean 
   // ── Filters ────────────────────────────────────────────────
   const visible = clients.filter(c => c.lat && c.lng && (filter === 'todos' || c.status === filter));
   const visibleLeads = showLeads
-    ? preRegistrations.filter(p => p.lat && p.lng)
-    : [];
+  ? preRegistrations.filter(p => p.lat != null && p.lng != null)
+  : [];
 
   // ── Loading state ──────────────────────────────────────────
   if (loading) return (
@@ -414,75 +414,79 @@ export default function InteractiveMap({ compact = false }: { compact?: boolean 
       )}
 
       {/* ── FASE B: Banner de modo de posicionamento de lead ── */}
-      {placingLead && !compact && (
-        <div style={{
-          background: '#0c4a6e', border: '1px solid #0ea5e9', borderRadius: 8,
-          padding: '8px 16px', display: 'flex', alignItems: 'center',
-          justifyContent: 'space-between', gap: 8,
-        }}>
-          <span style={{ fontSize: 13, color: '#bae6fd', fontWeight: 500 }}>
-            📌 Clique no mapa para posicionar o novo lead
-          </span>
-          <button
-            onClick={() => setPlacingLead(false)}
-            style={{ background: '#164e63', border: '1px solid #0ea5e9', color: '#7dd3fc', borderRadius: 6, padding: '3px 10px', fontSize: 12, cursor: 'pointer' }}
-          >
-            Cancelar
-          </button>
-        </div>
-      )}
+{placingLead && (
+  <div style={{
+    background: '#0c4a6e', border: '1px solid #0ea5e9', borderRadius: 8,
+    padding: '8px 16px', display: 'flex', alignItems: 'center',
+    justifyContent: 'space-between', gap: 8,
+  }}>
+    <span style={{ fontSize: 13, color: '#bae6fd', fontWeight: 500 }}>
+      📌 Clique no mapa para posicionar o novo lead
+    </span>
+    <button
+      onClick={() => setPlacingLead(false)}
+      style={{ background: '#164e63', border: '1px solid #0ea5e9', color: '#7dd3fc', borderRadius: 6, padding: '3px 10px', fontSize: 12, cursor: 'pointer' }}
+    >
+      Cancelar
+    </button>
+  </div>
+)}
 
       {/* ── Filtros (existente + botões de leads) ─────────── */}
-      {!compact && (
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-          {/* Botões de filtro de clientes (existente) */}
-          <button onClick={() => setFilter('todos')} style={{ padding: '4px 12px', borderRadius: 20, fontSize: 12, fontWeight: 500, cursor: 'pointer', background: filter === 'todos' ? '#2563eb' : '#1e293b', color: filter === 'todos' ? '#fff' : '#94a3b8', border: `1px solid ${filter === 'todos' ? '#2563eb' : '#334155'}` }}>
-            Todos ({clients.filter(c => c.lat && c.lng).length})
+<div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+  {/* Botões de filtro de clientes (existente) */}
+  {!compact && (
+    <>
+      <button onClick={() => setFilter('todos')} style={{ padding: '4px 12px', borderRadius: 20, fontSize: 12, fontWeight: 500, cursor: 'pointer', background: filter === 'todos' ? '#2563eb' : '#1e293b', color: filter === 'todos' ? '#fff' : '#94a3b8', border: `1px solid ${filter === 'todos' ? '#2563eb' : '#334155'}` }}>
+        Todos ({clients.filter(c => c.lat && c.lng).length})
+      </button>
+      {(Object.keys(STATUS_LABELS) as ClientStatus[]).map(s => {
+        const n = clients.filter(c => c.status === s && c.lat && c.lng).length;
+        if (n === 0) return null;
+        const active = filter === s;
+        return (
+          <button key={s} onClick={() => setFilter(s)} style={{ padding: '4px 12px', borderRadius: 20, fontSize: 12, fontWeight: 500, cursor: 'pointer', background: active ? STATUS_COLORS[s] : '#1e293b', color: active ? '#fff' : '#94a3b8', border: `1px solid ${active ? STATUS_COLORS[s] : '#334155'}`, display: 'flex', alignItems: 'center', gap: 4 }}>
+            <span style={{ width: 8, height: 8, borderRadius: '50%', background: STATUS_COLORS[s], display: 'inline-block' }} />
+            {STATUS_LABELS[s]} ({n})
           </button>
-          {(Object.keys(STATUS_LABELS) as ClientStatus[]).map(s => {
-            const n = clients.filter(c => c.status === s && c.lat && c.lng).length;
-            if (n === 0) return null;
-            const active = filter === s;
-            return (
-              <button key={s} onClick={() => setFilter(s)} style={{ padding: '4px 12px', borderRadius: 20, fontSize: 12, fontWeight: 500, cursor: 'pointer', background: active ? STATUS_COLORS[s] : '#1e293b', color: active ? '#fff' : '#94a3b8', border: `1px solid ${active ? STATUS_COLORS[s] : '#334155'}`, display: 'flex', alignItems: 'center', gap: 4 }}>
-                <span style={{ width: 8, height: 8, borderRadius: '50%', background: STATUS_COLORS[s], display: 'inline-block' }} />{STATUS_LABELS[s]} ({n})
-              </button>
-            );
-          })}
+        );
+      })}
 
-          {/* ── FASE A: Toggle de leads ─────────────────────── */}
-          {preRegistrations.filter(p => p.lat && p.lng).length > 0 && (
-            <button
-              onClick={() => setShowLeads(v => !v)}
-              style={{
-                padding: '4px 12px', borderRadius: 20, fontSize: 12, fontWeight: 500,
-                cursor: 'pointer',
-                background: showLeads ? '#06b6d4' : '#1e293b',
-                color: showLeads ? '#fff' : '#94a3b8',
-                border: `1px solid ${showLeads ? '#06b6d4' : '#334155'}`,
-                display: 'flex', alignItems: 'center', gap: 4,
-              }}
-            >
-              <span style={{ fontSize: 11 }}>★</span>
-              Leads ({preRegistrations.filter(p => p.lat && p.lng).length})
-            </button>
-          )}
-
-          {/* ── FASE B: Botão de novo lead via mapa ─────────── */}
-          <button
-            onClick={() => setPlacingLead(v => !v)}
-            style={{
-              padding: '4px 12px', borderRadius: 20, fontSize: 12, fontWeight: 500,
-              cursor: 'pointer', marginLeft: 'auto',
-              background: placingLead ? '#0ea5e9' : '#1e293b',
-              color: placingLead ? '#fff' : '#94a3b8',
-              border: `1px solid ${placingLead ? '#0ea5e9' : '#334155'}`,
-            }}
-          >
-            📌 {placingLead ? 'Cancelar' : 'Novo Lead aqui'}
-          </button>
-        </div>
+      {/* ── FASE A: Toggle de leads ─────────────────────── */}
+      {preRegistrations.filter(p => p.lat && p.lng).length > 0 && (
+        <button
+          onClick={() => setShowLeads(v => !v)}
+          style={{
+            padding: '4px 12px', borderRadius: 20, fontSize: 12, fontWeight: 500,
+            cursor: 'pointer',
+            background: showLeads ? '#06b6d4' : '#1e293b',
+            color: showLeads ? '#fff' : '#94a3b8',
+            border: `1px solid ${showLeads ? '#06b6d4' : '#334155'}`,
+            display: 'flex', alignItems: 'center', gap: 4,
+          }}
+        >
+          <span style={{ fontSize: 11 }}>★</span>
+          Leads ({preRegistrations.filter(p => p.lat && p.lng).length})
+        </button>
       )}
+    </>
+  )}
+
+  {/* ── FASE B: Botão de novo lead via mapa ─────────── */}
+  <button
+    onClick={() => setPlacingLead(v => !v)}
+    style={{
+      padding: '4px 12px', borderRadius: 20, fontSize: 12, fontWeight: 500,
+      cursor: 'pointer', marginLeft: 'auto',
+      background: placingLead ? '#0ea5e9' : '#1e293b',
+      color: placingLead ? '#fff' : '#94a3b8',
+      border: `1px solid ${placingLead ? '#0ea5e9' : '#334155'}`,
+    }}
+  >
+    📌 {placingLead ? 'Cancelar' : 'Novo Lead aqui'}
+  </button>
+</div>
+      
 
       {/* ── Mapa ──────────────────────────────────────────────── */}
       <div
@@ -505,16 +509,14 @@ export default function InteractiveMap({ compact = false }: { compact?: boolean 
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
           <RecenterMap clients={clients} resetKey={recenterKey} />
-          {!compact && <MapSearchBar />}
-          {!compact && <LocateControl />}
+{!compact && <MapSearchBar />}
+{!compact && <LocateControl />}
 
-          {/* ── FASE B: Handler de clique para novo lead ──── */}
-          {!compact && (
-            <LeadPlacementHandler
-              active={placingLead}
-              onMapClick={handleLeadMapClick}
-            />
-          )}
+{/* ── FASE B: Handler de clique para novo lead ──── */}
+<LeadPlacementHandler
+  active={placingLead}
+  onMapClick={handleLeadMapClick}
+/>
 
           {/* ── Marcadores de clientes (existente) ───────── */}
           {visible.map(client => (

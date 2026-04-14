@@ -470,21 +470,32 @@ export default function InteractiveMap({ compact = false }: { compact?: boolean 
       )}
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-        {!compact && (
-          <>
-            <button onClick={() => setFilter('todos')} style={{ padding: '4px 12px', borderRadius: 20, fontSize: 12, fontWeight: 500, cursor: 'pointer', background: filter === 'todos' ? '#2563eb' : '#1e293b', color: filter === 'todos' ? '#fff' : '#94a3b8', border: `1px solid ${filter === 'todos' ? '#2563eb' : '#334155'}` }}>
-              Todos ({clients.filter(c => c.lat && c.lng).length})
-            </button>
-            {(Object.keys(STATUS_LABELS) as ClientStatus[]).map(s => {
-              const n = clients.filter(c => c.status === s && c.lat && c.lng).length;
-              if (n === 0) return null;
-              const active = filter === s;
-              return (
-                <button key={s} onClick={() => setFilter(s)} style={{ padding: '4px 12px', borderRadius: 20, fontSize: 12, fontWeight: 500, cursor: 'pointer', background: active ? STATUS_COLORS[s] : '#1e293b', color: active ? '#fff' : '#94a3b8', border: `1px solid ${active ? STATUS_COLORS[s] : '#334155'}`, display: 'flex', alignItems: 'center', gap: 4 }}>
-                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: STATUS_COLORS[s], display: 'inline-block' }} />{STATUS_LABELS[s]} ({n})
-                </button>
-              );
-            })}
+  {!compact && (
+    <>
+      <button onClick={() => setFilter('todos')} style={{ padding: '4px 12px', borderRadius: 20, fontSize: 12, fontWeight: 500, cursor: 'pointer', background: filter === 'todos' ? '#2563eb' : '#1e293b', color: filter === 'todos' ? '#fff' : '#94a3b8', border: `1px solid ${filter === 'todos' ? '#2563eb' : '#334155'}` }}>
+        Todos ({clients.filter(c => c.lat && c.lng).length})
+      </button>
+      {(Object.keys(STATUS_LABELS) as ClientStatus[]).map(s => {
+        const n = clients.filter(c => c.status === s && c.lat && c.lng).length;
+        if (n === 0) return null;
+        const active = filter === s;
+        return (
+          <button key={s} onClick={() => setFilter(s)} style={{ padding: '4px 12px', borderRadius: 20, fontSize: 12, fontWeight: 500, cursor: 'pointer', background: active ? STATUS_COLORS[s] : '#1e293b', color: active ? '#fff' : '#94a3b8', border: `1px solid ${active ? STATUS_COLORS[s] : '#334155'}`, display: 'flex', alignItems: 'center', gap: 4 }}>
+            <span style={{ width: 8, height: 8, borderRadius: '50%', background: STATUS_COLORS[s], display: 'inline-block' }} />
+            {STATUS_LABELS[s]} ({n})
+          </button>
+        );
+      })}
+    </>
+  )}
+
+  <button
+    onClick={() => setPlacingLead(v => !v)}
+    ...
+  >
+    📌 {placingLead ? 'Cancelar' : 'Novo Lead aqui'}
+  </button>
+</div>
 
             {preRegistrations.filter(p => p.lat != null && p.lng != null).length > 0 && (
               <button

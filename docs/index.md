@@ -1,43 +1,62 @@
-# Central da Documentação
+# 📖 Documentação VisitAgro
 
-[Home do repositório](../README.md) · [Visão geral](./visao-geral.md) · [Setup do banco](./setup-banco.md) · [Changelog](./changelog.md) · [Release 0.9.4](./updates-v094.md) · [Auditoria técnica](./auditoria-tecnica.md)
+> Centro de navegação da documentação oficial do projeto.
+
+Bem-vindo à área de documentação do **VisitAgro**.  
+Aqui você encontra os materiais de apoio organizados de forma clara, visual e prática para facilitar manutenção, implantação e evolução do sistema.
 
 ---
 
-## Bem-vindo
+## 🧭 Navegação
 
-Esta central organiza a documentação do **VisitAgroPro** em páginas menores, mais claras e mais agradáveis de navegar no GitHub.
+### 🚀 Projeto
+- [🌱 Visão geral do projeto](../README.md)
+- [📝 Changelog](./changelog.md)
+- [🆕 Updates da versão 0.9.4](./updates-v094.md)
 
-## Leitura recomendada
+### 🗄️ Banco de Dados
+- [⚙️ Setup do banco](./setup-banco.md)
 
-### Para quem vai instalar
+### 🛡️ Análise Técnica
+- [🔍 Auditoria técnica](./auditoria-tecnica.md)
 
-1. [Visão geral do sistema](./visao-geral.md)
-2. [Setup do banco](./setup-banco.md)
-3. [Release 0.9.4](./updates-v094.md)
+---
 
-### Para quem vai manter ou evoluir
+## ✨ O que você encontra aqui
 
-1. [Auditoria técnica](./auditoria-tecnica.md)
-2. [Changelog](./changelog.md)
-3. [Visão geral do sistema](./visao-geral.md)
+- documentação organizada por tema
+- leitura mais fluida do que um README gigante
+- base pronta para GitHub Pages
+- material ideal para manutenção, handoff e revisão técnica
 
-## Mapa da documentação
+---
 
-| Documento | Base original | Função |
-|---|---|---|
-| [Visão geral do sistema](./visao-geral.md) | `README.md` | Apresenta produto, stack, módulos, rotas e deploy |
-| [Setup do banco](./setup-banco.md) | `SETUP_BANCO.md` | Guia operacional de banco e instalação limpa |
-| [Changelog](./changelog.md) | `CHANGELOG.md` | Histórico consolidado de versões |
-| [Release 0.9.4](./updates-v094.md) | `UPDATES.md` | Últimas correções explicadas de forma executiva |
-| [Auditoria técnica](./auditoria-tecnica.md) | `diagnostico_schema_completo_antigravity.md` | Diagnóstico resumido e leitura técnica guiada |
+## 🧩 Estrutura sugerida da pasta `docs`
 
-## Proposta visual para o repositório
+```text
+docs/
+├── index.md
+├── setup-banco.md
+├── changelog.md
+├── updates-v094.md
+└── auditoria-tecnica.md
+```
 
-A melhor combinação para este projeto é:
+---
 
-- **README curto e forte** na raiz
-- **Documentação detalhada em `docs/`**
-- **GitHub Pages opcional** usando `docs/index.md`
+## 🌐 Publicação com GitHub Pages
 
-Essa estrutura deixa a home mais bonita, evita parede de texto e mantém toda a documentação versionada junto com o código.
+Se você ativar o **GitHub Pages** usando `main` + `/docs`, esta página pode virar a entrada do site de documentação do projeto.
+
+> Arquivo recomendado para entrada: `docs/index.md`
+
+---
+
+## 🔗 Acesso rápido
+
+| Página | Descrição |
+|--------|-----------|
+| [Setup do banco](./setup-banco.md) | Passo a passo de preparação da base |
+| [Changelog](./changelog.md) | Histórico resumido e organizado |
+| [Updates 0.9.4](./updates-v094.md) | Correções e melhorias mais recentes |
+| [Auditoria técnica](./auditoria-tecnica.md) | Diagnóstico e visão de estabilidade |

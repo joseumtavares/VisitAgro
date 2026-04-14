@@ -1,83 +1,100 @@
-# Setup do Banco
+# 🗄️ Setup do Banco de Dados
 
-[Central da documentação](./index.md) · [Visão geral](./visao-geral.md) · [Release 0.9.4](./updates-v094.md)
+> Guia rápido para preparar a base do VisitAgro.
 
 ---
 
-## Alerta principal
+## 🎯 Objetivo
 
-O schema atual depende da tabela `workspaces` como eixo central. Antes de qualquer operação de inserção, a workspace padrão **`principal`** precisa existir.
+Esta página reúne a organização do banco para dois cenários comuns:
 
-## Instalação limpa
+- **projeto novo**, com schema completo
+- **banco já existente**, com aplicação de correções e ajustes
 
-### 1. Criar o schema
+---
 
-No SQL Editor do Supabase, execute:
+## 📦 Arquivos relacionados
 
-```sql
-schema_atual_supabase.sql
-```
+| Arquivo | Uso |
+|--------|-----|
+| `schema_completo_v09.sql` | Estrutura completa para banco novo |
+| `schema_fix.sql` | Ajustes e correções para banco existente |
+| `scripts/insert_admin.sql` | Inserção de usuário administrador |
+| `scripts/generate-password-hash.js` | Geração de hash de senha |
+| `scripts/generate-hash-standalone.js` | Geração isolada de hash |
 
-Se houver restos de versões anteriores com estrutura incompatível, limpe as tabelas antigas antes.
+---
 
-### 2. Ajustar tabelas operacionais
+## 🆕 Cenário 1 — Projeto novo
 
-Execute:
+Quando a base ainda não existe, o caminho recomendado é:
 
-```sql
-scripts/migration_v2.sql
-```
+1. criar o projeto no Supabase
+2. abrir o editor SQL
+3. executar o arquivo `schema_completo_v09.sql`
+4. criar o usuário administrador
+5. configurar as variáveis de ambiente
+6. validar login e rotas principais
 
-Esse passo cobre ajustes de estrutura que podem faltar em instalações parciais e também prepara dados operacionais essenciais.
-
-### 3. Inserir workspace padrão e admin
-
-Execute:
-
-```sql
-scripts/insert_admin.sql
-```
-
-Esse script foi pensado para rodar na ordem abaixo:
-
-1. cria a workspace `principal`
-2. cria a empresa padrão
-3. remove um admin inválido, se existir
-4. recria ou atualiza o admin com hash bcrypt válido
-5. insere o registro inicial de configurações
-
-## Credenciais iniciais
-
-Após a preparação do banco, o login padrão é:
-
-- usuário: `admin`
-- senha: `admin123`
-
-Troque a senha imediatamente após o primeiro acesso.
-
-## Variáveis de ambiente mínimas
+### ✅ Ordem sugerida
 
 ```bash
-NEXT_PUBLIC_SUPABASE_URL=https://xxxx.supabase.co
-SUPABASE_SERVICE_ROLE_KEY=seu_service_role_key
-JWT_SECRET=uma_string_forte_com_32_chars_ou_mais
-JWT_EXPIRES_IN=28800
+1. Executar schema_completo_v09.sql
+2. Gerar hash da senha admin
+3. Executar scripts/insert_admin.sql
+4. Ajustar .env
+5. Testar login
 ```
 
-## Boas práticas
+---
 
-- Nunca commit `JWT_SECRET` ou `SERVICE_ROLE_KEY`
-- Faça a instalação do banco antes de validar o frontend
-- Confirme que a workspace `principal` existe antes de testar inserts
-- Depois do setup, valide login, criação de cliente e criação de pedido
+## 🔧 Cenário 2 — Banco existente
 
-## Checklist pós-instalação
+Se você já possui uma base anterior e precisa apenas atualizar a estrutura:
 
-- [ ] Schema executado sem erro
-- [ ] `migration_v2.sql` aplicado
-- [ ] `insert_admin.sql` aplicado
-- [ ] Workspace `principal` criada
-- [ ] Usuário `admin` acessando normalmente
-- [ ] Configurações iniciais salvas
-- [ ] CRUD de clientes funcionando
-- [ ] Pedido com itens inserido com sucesso
+1. faça backup do banco atual
+2. revise diferenças de schema
+3. execute `schema_fix.sql`
+4. valide tabelas, colunas e índices
+5. reprocese dados se necessário
+
+> Antes de aplicar migration em produção, teste em ambiente de homologação.
+
+---
+
+## 🔐 Dados sensíveis
+
+Alguns pontos merecem atenção especial:
+
+- uso de `service_role` apenas no servidor
+- proteção dos tokens JWT
+- controle seguro de senhas com hash
+- validação de acesso administrativo
+
+---
+
+## 🧪 Checklist de validação
+
+- [ ] tabelas criadas corretamente
+- [ ] usuário admin inserido
+- [ ] hash de senha gerado com sucesso
+- [ ] login funcionando
+- [ ] leitura e escrita nas rotas principais
+- [ ] logs administrativos acessíveis ao perfil correto
+- [ ] permissões sensíveis restritas ao backend
+
+---
+
+## 📌 Boas práticas
+
+- mantenha backup antes de migrations
+- nunca exponha `service_role` no client
+- revise scripts SQL antes de aplicar em produção
+- documente qualquer ajuste manual realizado na base
+
+---
+
+## 🔗 Voltar
+
+- [📖 Central da documentação](./index.md)
+- [🌱 README principal](../README.md)

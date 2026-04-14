@@ -1,58 +1,73 @@
-# Release 0.9.4
+# 🆕 Updates da Versão 0.9.4
 
-[Central da documentação](./index.md) · [Changelog](./changelog.md) · [Auditoria técnica](./auditoria-tecnica.md)
+> Resumo das melhorias aplicadas na versão estável atual.
 
 ---
 
-## Resumo executivo
+## ✅ Status da release
 
-A versão **0.9.4** fecha os principais riscos identificados na auditoria técnica e consolida o projeto como uma base mais segura para produção.
+| Item | Situação |
+|------|----------|
+| Versão | `0.9.4` |
+| Data | `14/04/2026` |
+| Estabilidade | ✅ Produção |
+| Correções críticas | ✅ Aplicadas |
+| Estrutura documental | ✅ Atualizada |
 
-## O que foi resolvido
+---
 
-### Críticos e altos
+## 🔥 Destaques da versão
 
-- Falha bloqueante de inserts por ausência da workspace padrão
-- Login sem proteção adequada contra força bruta
-- Logs administrativos visíveis para usuários sem privilégio de admin
-- Alteração de senha sem filtro completo por workspace
-- Risco de uso indevido do `SERVICE_ROLE_KEY` sem proteção explícita de servidor
+### 🔐 Segurança e autenticação
+- reforço nas rotas de autenticação
+- melhoria da proteção contra brute-force
+- validações adicionais no fluxo protegido por JWT
 
-### Médios
+### 🧱 Backend
+- ajustes em rotas principais
+- melhoria de consistência nas ações administrativas
+- maior previsibilidade em cenários sensíveis de operação
 
-- `apiFetch` forçando `Content-Type` em `FormData`
-- Remoções no dashboard silenciando erro
-- Fluxos de pagamento e carregamento sem validação adequada de resposta
-- Tipos públicos desalinhados com o schema real
+### 🖥️ Frontend
+- organização mais clara das áreas do dashboard
+- base pronta para manutenção contínua
+- estrutura mais alinhada para evolução futura
 
-## Arquivos com destaque na release
+### 🗄️ Banco de dados
+- separação entre schema completo e migration corretiva
+- melhor organização do setup para novos ambientes e bases existentes
 
-- `scripts/insert_admin.sql`
-- `src/app/api/auth/login/route.ts`
-- `src/app/api/admin/logs/route.ts`
-- `src/app/api/auth/change-password/route.ts`
-- `src/lib/supabaseAdmin.ts`
-- `src/lib/apiFetch.ts`
-- `src/types/index.ts`
+### 📚 Documentação
+- README fortalecido
+- criação de central documental em `docs/`
+- padronização visual das páginas auxiliares
 
-## Impacto prático
+---
 
-Depois dessa versão, o projeto ganhou melhorias em quatro frentes:
+## 🎯 Impacto prático
 
-1. **Instalação mais confiável**
-2. **Autenticação mais robusta**
-3. **Administração mais segura**
-4. **Frontend mais previsível**
+Com a versão `0.9.4`, o projeto fica melhor preparado para:
 
-## Leitura para equipe técnica
+- uso em ambiente produtivo
+- manutenção por outros desenvolvedores
+- onboarding técnico
+- auditoria interna
+- futuras expansões de módulo
 
-Essa release é importante para quem vai:
+---
 
-- subir novos ambientes
-- auditar segurança
-- continuar manutenção do backend
-- validar estabilidade do dashboard
+## 📌 Próximo passo recomendado
 
-## Como apresentar essa release no repositório
+Após esta versão, a melhor sequência de evolução é:
 
-Em vez de deixar `UPDATES.md` perdido na raiz, a recomendação é tratá-lo como uma **página de release importante** dentro da documentação. Isso valoriza o trabalho feito e facilita o entendimento de contexto.
+1. finalizar módulos pendentes
+2. expandir relatórios e métricas
+3. consolidar regras de comissão adicionais
+4. amadurecer documentação operacional
+
+---
+
+## 🔗 Voltar
+
+- [📖 Central da documentação](./index.md)
+- [📝 Changelog](./changelog.md)

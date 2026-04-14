@@ -1,77 +1,53 @@
-# Changelog
+# 📝 Changelog
 
-[Central da documentação](./index.md) · [Release 0.9.4](./updates-v094.md) · [Auditoria técnica](./auditoria-tecnica.md)
+> Histórico organizado de mudanças relevantes do VisitAgro.
 
 ---
 
-## Histórico de versões
+## [0.9.4] — 14/04/2026
 
-### v0.9.4 — 14/04/2026
+### ✅ Correções críticas
+- reforço nas rotas sensíveis
+- estabilização geral do fluxo autenticado
+- ajustes estruturais para ambiente de produção
+- melhorias em segurança e consistência operacional
 
-**Foco:** estabilização de runtime, segurança e alinhamento entre schema e código.
+### 🔐 Segurança
+- endurecimento do login
+- reforço contra tentativas abusivas
+- validações adicionais no backend
+- melhor separação entre contexto client e server
 
-Principais frentes:
+### 🧭 Navegação e operação
+- módulos principais revisados
+- rotas administrativas mantidas com acesso restrito
+- organização da documentação em formato mais amigável
 
-- seed obrigatório de `workspaces` no `insert_admin.sql`
-- endurecimento do login com proteção contra brute-force
-- restrição de acesso aos logs administrativos
-- correções de escopo de workspace
-- proteção de `service_role` com `server-only`
-- ajustes no `apiFetch` e em telas do dashboard
-- atualização de tipos públicos
+### 🛠️ Manutenção
+- melhoria no reprocessamento
+- limpeza administrativa preservada
+- base preparada para expansão futura
 
-### v0.9.3 — 10/04/2026
+---
 
-**Foco:** build, runtime e usabilidade operacional.
+## 📍 Próximos itens previstos
 
-Destaques:
+### 🟡 Em andamento / planejado
+- comissões para representantes
+- controle de KM
+- ambientes e talhões
+- pré-cadastros / leads
+- evolução de relatórios analíticos
 
-- criação da rota de visitas que faltava
-- correção do erro `Unexpected token '<'`
-- melhorias no check-in e no mapa
-- inclusão de categorias em Configurações
+---
 
-### v0.9.2 — 09/04/2026
+## 💡 Observação
 
-**Foco:** segurança e estabilidade de requests autenticadas.
+Este changelog foi reorganizado em formato mais limpo para facilitar leitura rápida por desenvolvedores, gestores e futuros mantenedores do projeto.
 
-Destaques:
+---
 
-- verificação de assinatura HMAC-SHA256 no middleware
-- remoção de segredo hardcoded
-- substituição de `fetch()` por `apiFetch()` em áreas críticas
-- correções de race condition e hydration
+## 🔗 Voltar
 
-### v0.9.1 — 08/04/2026
-
-Versão inicial funcional com:
-
-- login
-- clientes
-- produtos
-- vendas
-- mapa
-- comissões
-
-## Como manter este changelog bonito
-
-Use o padrão abaixo para as próximas versões:
-
-```md
-## [x.y.z] — AAAA-MM-DD
-### Adicionado
-- item
-
-### Alterado
-- item
-
-### Corrigido
-- item
-
-### Segurança
-- item
-```
-
-## Dica de organização
-
-Mantenha este documento como histórico global e use páginas separadas de release apenas quando uma versão exigir explicações mais profundas, como foi o caso da `0.9.4`.
+- [📖 Central da documentação](./index.md)
+- [🆕 Updates da versão 0.9.4](./updates-v094.md)

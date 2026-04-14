@@ -1,13 +1,16 @@
 'use client';
 
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import { useRouter } from 'next/navigation';
+import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { apiFetch } from '@/lib/apiFetch';
 
+// ── Types ─────────────────────────────────────────────────────
 type ClientStatus = 'interessado' | 'visitado' | 'agendado' | 'comprou' | 'naointeressado' | 'retornar' | 'outro';
 type ActivityType = 'Visita' | 'Ligação' | 'WhatsApp' | 'Email' | 'Reunião';
+type PreRegistrationStatus = 'novo' | 'contatado' | 'qualificado' | 'convertido' | 'perdido';
 
 interface Client {
   id: string; name: string; status: ClientStatus;
@@ -18,6 +21,14 @@ interface Client {
   category?: string | null;
 }
 
+interface PreRegistration {
+  id: string; name: string; status: PreRegistrationStatus;
+  lat?: number | null; lng?: number | null;
+  tel?: string | null; source?: string | null;
+  interest?: string | null; point_reference?: string | null;
+  maps_link?: string | null; obs?: string | null;
+}
+
 interface CheckinForm {
   client_id: string; client_name: string;
   activity_type: ActivityType; client_status: ClientStatus;
@@ -25,7 +36,9 @@ interface CheckinForm {
   next_visit_date: string; next_activity_type: ActivityType; next_obs: string;
 }
 
+// ── Constants ─────────────────────────────────────────────────
 const SC_CENTER: [number, number] = [-28.935, -49.486];
+
 const STATUS_COLORS: Record<ClientStatus, string> = {
   interessado: '#f59e0b', visitado: '#3b82f6', agendado: '#8b5cf6',
   comprou: '#10b981', naointeressado: '#ef4444', retornar: '#f97316', outro: '#6b7280',
@@ -34,17 +47,46 @@ const STATUS_LABELS: Record<ClientStatus, string> = {
   interessado: 'Interessado', visitado: 'Visitado', agendado: 'Agendado',
   comprou: 'Comprou', naointeressado: 'Não Interessado', retornar: 'Retornar', outro: 'Outro',
 };
+
+// Lead colors — cyan palette, distinct from all client status colors
+const LEAD_STATUS_COLORS: Record<PreRegistrationStatus, string> = {
+  novo:        '#06b6d4', // cyan-500
+  contatado:   '#0ea5e9', // sky-500
+  qualificado: '#14b8a6', // teal-500
+  convertido:  '#a855f7', // purple-500
+  perdido:     '#6b7280', // gray-500
+};
+const LEAD_STATUS_LABELS: Record<PreRegistrationStatus, string> = {
+  novo: 'Novo', contatado: 'Contatado', qualificado: 'Qualificado',
+  convertido: 'Convertido', perdido: 'Perdido',
+};
+const SOURCE_LABELS: Record<string, string> = {
+  manual: 'Manual', site: 'Site', indicacao: 'Indicação',
+  whatsapp: 'WhatsApp', instagram: 'Instagram', facebook: 'Facebook',
+  feira: 'Feira', outro: 'Outro',
+};
+
 const ACTIVITY_TYPES: ActivityType[] = ['Visita', 'Ligação', 'WhatsApp', 'Email', 'Reunião'];
 const ACTIVITY_ICONS: Record<ActivityType, string> = {
   'Visita': '🚗', 'Ligação': '📞', 'WhatsApp': '💬', 'Email': '✉️', 'Reunião': '🤝',
 };
 
+// ── Icon factories ─────────────────────────────────────────────
 function makeLeafletIcon(status: ClientStatus) {
   const color = STATUS_COLORS[status] ?? '#6b7280';
   const svg = `<svg width="34" height="44" viewBox="0 0 34 44" xmlns="http://www.w3.org/2000/svg"><path d="M17 0C7.6 0 0 7.6 0 17c0 9.4 17 27 17 27s17-17.6 17-27C34 7.6 26.4 0 17 0z" fill="${color}" stroke="white" stroke-width="2"/><circle cx="17" cy="17" r="7" fill="white" opacity="0.95"/></svg>`;
   return L.divIcon({ html: svg, iconSize: [34, 44], iconAnchor: [17, 44], popupAnchor: [0, -46], className: '' });
 }
 
+// Lead icon: same pin shape but with a star inside instead of a circle
+// This makes leads visually distinct (different color + different inner symbol)
+function makeLeafletIconLead(status: PreRegistrationStatus) {
+  const color = LEAD_STATUS_COLORS[status] ?? '#06b6d4';
+  const svg = `<svg width="34" height="44" viewBox="0 0 34 44" xmlns="http://www.w3.org/2000/svg"><path d="M17 0C7.6 0 0 7.6 0 17c0 9.4 17 27 17 27s17-17.6 17-27C34 7.6 26.4 0 17 0z" fill="${color}" stroke="white" stroke-width="2"/><text x="17" y="22" text-anchor="middle" dominant-baseline="middle" font-size="14" fill="white" font-weight="bold">★</text></svg>`;
+  return L.divIcon({ html: svg, iconSize: [34, 44], iconAnchor: [17, 44], popupAnchor: [0, -46], className: '' });
+}
+
+// ── Sub-components ─────────────────────────────────────────────
 function Toast({ msg, type }: { msg: string; type: 'success' | 'error' | 'info' }) {
   const bg = type === 'success' ? '#166534' : type === 'error' ? '#7f1d1d' : '#1e3a5f';
   return <div style={{ position: 'fixed', top: 16, left: '50%', transform: 'translateX(-50%)', zIndex: 9999, background: bg, color: '#fff', padding: '10px 18px', borderRadius: 10, fontSize: 13, fontWeight: 500, boxShadow: '0 4px 20px rgba(0,0,0,0.4)', whiteSpace: 'nowrap', maxWidth: '92vw', animation: 'fadeIn .2s ease' }}>{msg}</div>;
@@ -116,6 +158,23 @@ function MapSearchBar() {
   );
 }
 
+// ── FASE B: MapClickHandler para posicionamento de novo lead ────
+// Ativado apenas quando placingLead = true. Passa o clique de volta
+// ao componente pai para redirecionar à página de pré-cadastros.
+function LeadPlacementHandler({ active, onMapClick }: {
+  active: boolean;
+  onMapClick: (lat: number, lng: number) => void;
+}) {
+  useMapEvents({
+    click(e) {
+      if (active) {
+        onMapClick(e.latlng.lat, e.latlng.lng);
+      }
+    },
+  });
+  return null;
+}
+
 // ── Modal de Check-in ─────────────────────────────────────────
 function CheckinModal({ form, setForm, onSave, onClose, saving }: {
   form: CheckinForm; setForm: React.Dispatch<React.SetStateAction<CheckinForm>>;
@@ -137,7 +196,6 @@ function CheckinModal({ form, setForm, onSave, onClose, saving }: {
         </div>
 
         <div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {/* Tipo atividade */}
           <div>
             <label style={{ fontSize: 11, color: '#94a3b8', display: 'block', marginBottom: 8 }}>TIPO DE ATIVIDADE</label>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -149,7 +207,6 @@ function CheckinModal({ form, setForm, onSave, onClose, saving }: {
             </div>
           </div>
 
-          {/* Status do cliente */}
           <div>
             <label style={{ fontSize: 11, color: '#94a3b8', display: 'block', marginBottom: 6 }}>ATUALIZAR STATUS DO CLIENTE</label>
             <select value={form.client_status} onChange={e => f('client_status', e.target.value as ClientStatus)} style={{ width: '100%', background: '#0f172a', border: '1px solid #334155', borderRadius: 8, padding: '8px 10px', color: '#f1f5f9', fontSize: 13 }}>
@@ -157,13 +214,11 @@ function CheckinModal({ form, setForm, onSave, onClose, saving }: {
             </select>
           </div>
 
-          {/* Observações */}
           <div>
             <label style={{ fontSize: 11, color: '#94a3b8', display: 'block', marginBottom: 6 }}>OBSERVAÇÕES</label>
             <textarea value={form.obs} onChange={e => f('obs', e.target.value)} rows={3} placeholder="O que foi discutido? Próximos passos..." style={{ width: '100%', background: '#0f172a', border: '1px solid #334155', borderRadius: 8, padding: '8px 10px', color: '#f1f5f9', fontSize: 13, resize: 'vertical', boxSizing: 'border-box' }} />
           </div>
 
-          {/* Agendar próxima */}
           <div style={{ background: '#0f172a', borderRadius: 10, padding: 14, border: '1px solid #334155' }}>
             <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
               <input type="checkbox" checked={form.schedule_next} onChange={e => f('schedule_next', e.target.checked)} style={{ width: 16, height: 16, accentColor: '#8b5cf6' }} />
@@ -214,6 +269,9 @@ function CheckinModal({ form, setForm, onSave, onClose, saving }: {
 
 // ── Componente principal ───────────────────────────────────────
 export default function InteractiveMap({ compact = false }: { compact?: boolean }) {
+  const router = useRouter();
+
+  // ── Clients state (existente) ──────────────────────────────
   const [clients, setClients]     = useState<Client[]>([]);
   const [loading, setLoading]     = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -223,23 +281,68 @@ export default function InteractiveMap({ compact = false }: { compact?: boolean 
   const [toast, setToast]         = useState<{ msg: string; type: 'success'|'error'|'info' } | null>(null);
   const [recenterKey, setRecenterKey] = useState(0);
   const [checkinClient, setCheckinClient] = useState<Client | null>(null);
-  const [checkinForm, setCheckinForm] = useState<CheckinForm>({ client_id: '', client_name: '', activity_type: 'Visita', client_status: 'visitado', obs: '', schedule_next: false, next_visit_date: '', next_activity_type: 'Visita', next_obs: '' });
+  const [checkinForm, setCheckinForm] = useState<CheckinForm>({
+    client_id: '', client_name: '', activity_type: 'Visita', client_status: 'visitado',
+    obs: '', schedule_next: false, next_visit_date: '', next_activity_type: 'Visita', next_obs: '',
+  });
   const [checkinSaving, setCheckinSaving] = useState(false);
 
-  const showToast = (msg: string, type: 'success'|'error'|'info' = 'info') => { setToast({ msg, type }); setTimeout(() => setToast(null), 3500); };
+  // ── FASE A: Pre-registrations state ───────────────────────
+  const [preRegistrations, setPreRegistrations] = useState<PreRegistration[]>([]);
+  const [showLeads, setShowLeads] = useState(true);
 
+  // ── FASE B: Lead placement state ──────────────────────────
+  // placingLead = true: próximo clique no mapa cria novo lead
+  const [placingLead, setPlacingLead] = useState(false);
+
+  const showToast = (msg: string, type: 'success'|'error'|'info' = 'info') => {
+    setToast({ msg, type }); setTimeout(() => setToast(null), 3500);
+  };
+
+  // ── Load clients (existente) ───────────────────────────────
   const load = useCallback(async () => {
-    try { setLoading(true); const r = await apiFetch('/api/clients'); const j = await r.json(); setClients(j.clients ?? []); setRecenterKey(k => k + 1); }
-    catch { showToast('Erro ao carregar clientes', 'error'); } finally { setLoading(false); }
+    try {
+      setLoading(true);
+      const r = await apiFetch('/api/clients');
+      const j = await r.json();
+      setClients(j.clients ?? []);
+      setRecenterKey(k => k + 1);
+    } catch {
+      showToast('Erro ao carregar clientes', 'error');
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  // ── FASE A: Load pre-registrations ────────────────────────
+  const loadLeads = useCallback(async () => {
+    try {
+      const r = await apiFetch('/api/pre-registrations');
+      const j = await r.json();
+      setPreRegistrations(j.pre_registrations ?? []);
+    } catch {
+      // silencioso — mapa de clientes continua funcionando mesmo sem leads
+    }
+  }, []);
 
+  useEffect(() => { load(); loadLeads(); }, [load, loadLeads]);
+
+  // ── FASE B: Clique no mapa → redirecionar para pré-cadastro ─
+  const handleLeadMapClick = useCallback((lat: number, lng: number) => {
+    setPlacingLead(false);
+    const mapsLink = `https://www.google.com/maps?q=${lat.toFixed(6)},${lng.toFixed(6)}`;
+    router.push(
+      `/dashboard/pre-registrations?lat=${lat.toFixed(6)}&lng=${lng.toFixed(6)}&maps_link=${encodeURIComponent(mapsLink)}`
+    );
+  }, [router]);
+
+  // ── Existing handlers ──────────────────────────────────────
   const saveEdit = async () => {
     if (!editingId) return; setSaving(true);
     try {
       const payload = { ...editForm };
-      if (!payload.maps_link && payload.lat && payload.lng) payload.maps_link = `https://www.google.com/maps?q=${payload.lat},${payload.lng}`;
+      if (!payload.maps_link && payload.lat && payload.lng)
+        payload.maps_link = `https://www.google.com/maps?q=${payload.lat},${payload.lng}`;
       const r = await apiFetch(`/api/clients/${editingId}`, { method: 'PUT', body: JSON.stringify(payload) });
       if (!r.ok) throw new Error('Falha ao salvar');
       showToast('✅ Cliente atualizado!', 'success'); await load(); setEditingId(null);
@@ -257,23 +360,39 @@ export default function InteractiveMap({ compact = false }: { compact?: boolean 
     try {
       let lat: number | null = null, lng: number | null = null;
       try {
-        const pos = await new Promise<GeolocationPosition>((res, rej) => navigator.geolocation.getCurrentPosition(res, rej, { enableHighAccuracy: true, timeout: 5000 }));
+        const pos = await new Promise<GeolocationPosition>((res, rej) =>
+          navigator.geolocation.getCurrentPosition(res, rej, { enableHighAccuracy: true, timeout: 5000 })
+        );
         lat = pos.coords.latitude; lng = pos.coords.longitude;
-      } catch { }
-      const payload: any = { checkin: true, client_id: checkinForm.client_id, activity_type: checkinForm.activity_type, client_status: checkinForm.client_status, obs: checkinForm.obs || null, lat, lng };
+      } catch (geoErr) {
+        console.warn('[map] Geolocalização indisponível no check-in', geoErr);
+      }
+      const payload: any = {
+        checkin: true, client_id: checkinForm.client_id, activity_type: checkinForm.activity_type,
+        client_status: checkinForm.client_status, obs: checkinForm.obs || null, lat, lng,
+      };
       if (checkinForm.schedule_next && checkinForm.next_visit_date) {
         payload.next_visit_date = new Date(checkinForm.next_visit_date).toISOString();
         payload.next_activity_type = checkinForm.next_activity_type;
         payload.next_obs = checkinForm.next_obs || null;
       }
       const r = await apiFetch('/api/visits', { method: 'POST', body: JSON.stringify(payload) });
-      if (!r.ok) { const j = await r.json(); throw new Error(j.error || 'Erro'); }
-      showToast('✅ Visita registrada!', 'success'); setCheckinClient(null); await load();
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(data?.error || 'Erro ao registrar visita');
+      showToast('✅ Visita registrada!', 'success');
+      setCheckinClient(null);
+      await load();
+      await loadLeads();
     } catch (e: any) { showToast('❌ ' + e.message, 'error'); } finally { setCheckinSaving(false); }
   };
 
+  // ── Filters ────────────────────────────────────────────────
   const visible = clients.filter(c => c.lat && c.lng && (filter === 'todos' || c.status === filter));
+  const visibleLeads = showLeads
+    ? preRegistrations.filter(p => p.lat && p.lng)
+    : [];
 
+  // ── Loading state ──────────────────────────────────────────
   if (loading) return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', minHeight: 200, background: '#0f172a', borderRadius: 8, color: '#64748b' }}>
       <div style={{ textAlign: 'center' }}>
@@ -286,11 +405,37 @@ export default function InteractiveMap({ compact = false }: { compact?: boolean 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', gap: 8 }}>
       {toast && <Toast msg={toast.msg} type={toast.type} />}
-      {checkinClient && <CheckinModal form={checkinForm} setForm={setCheckinForm} onSave={saveCheckin} onClose={() => setCheckinClient(null)} saving={checkinSaving} />}
+      {checkinClient && (
+        <CheckinModal
+          form={checkinForm} setForm={setCheckinForm}
+          onSave={saveCheckin} onClose={() => setCheckinClient(null)}
+          saving={checkinSaving}
+        />
+      )}
 
-      {/* Filtros */}
+      {/* ── FASE B: Banner de modo de posicionamento de lead ── */}
+      {placingLead && !compact && (
+        <div style={{
+          background: '#0c4a6e', border: '1px solid #0ea5e9', borderRadius: 8,
+          padding: '8px 16px', display: 'flex', alignItems: 'center',
+          justifyContent: 'space-between', gap: 8,
+        }}>
+          <span style={{ fontSize: 13, color: '#bae6fd', fontWeight: 500 }}>
+            📌 Clique no mapa para posicionar o novo lead
+          </span>
+          <button
+            onClick={() => setPlacingLead(false)}
+            style={{ background: '#164e63', border: '1px solid #0ea5e9', color: '#7dd3fc', borderRadius: 6, padding: '3px 10px', fontSize: 12, cursor: 'pointer' }}
+          >
+            Cancelar
+          </button>
+        </div>
+      )}
+
+      {/* ── Filtros (existente + botões de leads) ─────────── */}
       {!compact && (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+          {/* Botões de filtro de clientes (existente) */}
           <button onClick={() => setFilter('todos')} style={{ padding: '4px 12px', borderRadius: 20, fontSize: 12, fontWeight: 500, cursor: 'pointer', background: filter === 'todos' ? '#2563eb' : '#1e293b', color: filter === 'todos' ? '#fff' : '#94a3b8', border: `1px solid ${filter === 'todos' ? '#2563eb' : '#334155'}` }}>
             Todos ({clients.filter(c => c.lat && c.lng).length})
           </button>
@@ -298,20 +443,80 @@ export default function InteractiveMap({ compact = false }: { compact?: boolean 
             const n = clients.filter(c => c.status === s && c.lat && c.lng).length;
             if (n === 0) return null;
             const active = filter === s;
-            return <button key={s} onClick={() => setFilter(s)} style={{ padding: '4px 12px', borderRadius: 20, fontSize: 12, fontWeight: 500, cursor: 'pointer', background: active ? STATUS_COLORS[s] : '#1e293b', color: active ? '#fff' : '#94a3b8', border: `1px solid ${active ? STATUS_COLORS[s] : '#334155'}`, display: 'flex', alignItems: 'center', gap: 4 }}>
-              <span style={{ width: 8, height: 8, borderRadius: '50%', background: STATUS_COLORS[s], display: 'inline-block' }} />{STATUS_LABELS[s]} ({n})
-            </button>;
+            return (
+              <button key={s} onClick={() => setFilter(s)} style={{ padding: '4px 12px', borderRadius: 20, fontSize: 12, fontWeight: 500, cursor: 'pointer', background: active ? STATUS_COLORS[s] : '#1e293b', color: active ? '#fff' : '#94a3b8', border: `1px solid ${active ? STATUS_COLORS[s] : '#334155'}`, display: 'flex', alignItems: 'center', gap: 4 }}>
+                <span style={{ width: 8, height: 8, borderRadius: '50%', background: STATUS_COLORS[s], display: 'inline-block' }} />{STATUS_LABELS[s]} ({n})
+              </button>
+            );
           })}
+
+          {/* ── FASE A: Toggle de leads ─────────────────────── */}
+          {preRegistrations.filter(p => p.lat && p.lng).length > 0 && (
+            <button
+              onClick={() => setShowLeads(v => !v)}
+              style={{
+                padding: '4px 12px', borderRadius: 20, fontSize: 12, fontWeight: 500,
+                cursor: 'pointer',
+                background: showLeads ? '#06b6d4' : '#1e293b',
+                color: showLeads ? '#fff' : '#94a3b8',
+                border: `1px solid ${showLeads ? '#06b6d4' : '#334155'}`,
+                display: 'flex', alignItems: 'center', gap: 4,
+              }}
+            >
+              <span style={{ fontSize: 11 }}>★</span>
+              Leads ({preRegistrations.filter(p => p.lat && p.lng).length})
+            </button>
+          )}
+
+          {/* ── FASE B: Botão de novo lead via mapa ─────────── */}
+          <button
+            onClick={() => setPlacingLead(v => !v)}
+            style={{
+              padding: '4px 12px', borderRadius: 20, fontSize: 12, fontWeight: 500,
+              cursor: 'pointer', marginLeft: 'auto',
+              background: placingLead ? '#0ea5e9' : '#1e293b',
+              color: placingLead ? '#fff' : '#94a3b8',
+              border: `1px solid ${placingLead ? '#0ea5e9' : '#334155'}`,
+            }}
+          >
+            📌 {placingLead ? 'Cancelar' : 'Novo Lead aqui'}
+          </button>
         </div>
       )}
 
-      {/* Mapa */}
-      <div style={{ flex: 1, borderRadius: 10, overflow: 'hidden', position: 'relative', minHeight: compact ? 240 : 520 }}>
-        <MapContainer key="main-map" center={SC_CENTER} zoom={compact ? 7 : 9} style={{ height: '100%', width: '100%' }} scrollWheelZoom={!compact} zoomControl={true}>
-          <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+      {/* ── Mapa ──────────────────────────────────────────────── */}
+      <div
+        style={{
+          flex: 1, borderRadius: 10, overflow: 'hidden', position: 'relative',
+          minHeight: compact ? 240 : 520,
+          cursor: placingLead ? 'crosshair' : 'grab',
+        }}
+      >
+        <MapContainer
+          key="main-map"
+          center={SC_CENTER}
+          zoom={compact ? 7 : 9}
+          style={{ height: '100%', width: '100%' }}
+          scrollWheelZoom={!compact}
+          zoomControl={true}
+        >
+          <TileLayer
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          />
           <RecenterMap clients={clients} resetKey={recenterKey} />
           {!compact && <MapSearchBar />}
           {!compact && <LocateControl />}
+
+          {/* ── FASE B: Handler de clique para novo lead ──── */}
+          {!compact && (
+            <LeadPlacementHandler
+              active={placingLead}
+              onMapClick={handleLeadMapClick}
+            />
+          )}
+
+          {/* ── Marcadores de clientes (existente) ───────── */}
           {visible.map(client => (
             <Marker key={client.id} position={[client.lat!, client.lng!]} icon={makeLeafletIcon(client.status)}>
               <Popup minWidth={220} maxWidth={320}>
@@ -349,7 +554,6 @@ export default function InteractiveMap({ compact = false }: { compact?: boolean 
                       {(client.city || client.state) && <div>📍 {[client.city, client.state].filter(Boolean).join(' — ')}</div>}
                       {client.obs && <div style={{ fontStyle: 'italic', color: '#9ca3af', fontSize: 11, marginTop: 4 }}>"{client.obs}"</div>}
                     </div>
-                    {/* Botões — agora em TODOS os modos */}
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 5, marginTop: 10 }}>
                       <a href={client.maps_link ?? `https://www.google.com/maps?q=${client.lat},${client.lng}`} target="_blank" rel="noopener noreferrer"
                         style={{ textAlign: 'center', background: '#16a34a', color: '#fff', textDecoration: 'none', borderRadius: 6, padding: '7px 2px', fontSize: 11, fontWeight: 600 }}>🗺️ Maps</a>
@@ -360,6 +564,68 @@ export default function InteractiveMap({ compact = false }: { compact?: boolean 
                     </div>
                   </div>
                 )}
+              </Popup>
+            </Marker>
+          ))}
+
+          {/* ── FASE A: Marcadores de pré-cadastros/leads ──── */}
+          {visibleLeads.map(lead => (
+            <Marker
+              key={`lead-${lead.id}`}
+              position={[lead.lat!, lead.lng!]}
+              icon={makeLeafletIconLead(lead.status)}
+            >
+              <Popup minWidth={200} maxWidth={300}>
+                <div style={{ fontFamily: 'system-ui', color: '#111', minWidth: 190 }}>
+                  {/* Badge de tipo */}
+                  <div style={{ fontSize: 10, color: '#06b6d4', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>
+                    ★ Lead / Pré-cadastro
+                  </div>
+                  <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>{lead.name}</div>
+                  {/* Badge de status */}
+                  <span style={{
+                    display: 'inline-block', padding: '2px 10px', borderRadius: 20,
+                    fontSize: 11, fontWeight: 600, marginBottom: 8,
+                    background: (LEAD_STATUS_COLORS[lead.status] ?? '#06b6d4') + '22',
+                    color: LEAD_STATUS_COLORS[lead.status] ?? '#06b6d4',
+                    border: `1px solid ${(LEAD_STATUS_COLORS[lead.status] ?? '#06b6d4')}44`,
+                  }}>
+                    {LEAD_STATUS_LABELS[lead.status]}
+                  </span>
+                  <div style={{ fontSize: 12, color: '#4b5563', lineHeight: 1.6 }}>
+                    {lead.tel && (
+                      <div>📞 <a href={`tel:${lead.tel}`} style={{ color: '#2563eb' }}>{lead.tel}</a></div>
+                    )}
+                    {lead.source && (
+                      <div>🔖 {SOURCE_LABELS[lead.source] ?? lead.source}</div>
+                    )}
+                    {lead.interest && (
+                      <div style={{ fontSize: 11, color: '#6b7280' }}>💼 {lead.interest}</div>
+                    )}
+                    {lead.point_reference && (
+                      <div style={{ fontSize: 11, color: '#6b7280', fontStyle: 'italic', marginTop: 2 }}>
+                        📌 {lead.point_reference}
+                      </div>
+                    )}
+                  </div>
+                  {/* Ações */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 5, marginTop: 10 }}>
+                    <a
+                      href={lead.maps_link ?? `https://www.google.com/maps?q=${lead.lat},${lead.lng}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{ textAlign: 'center', background: '#16a34a', color: '#fff', textDecoration: 'none', borderRadius: 6, padding: '7px 2px', fontSize: 11, fontWeight: 600 }}
+                    >
+                      🗺️ Maps
+                    </a>
+                    <a
+                      href={`/dashboard/pre-registrations?edit=${lead.id}`}
+                      style={{ textAlign: 'center', background: '#0891b2', color: '#fff', textDecoration: 'none', borderRadius: 6, padding: '7px 2px', fontSize: 11, fontWeight: 600 }}
+                    >
+                      ✏️ Editar
+                    </a>
+                  </div>
+                </div>
               </Popup>
             </Marker>
           ))}

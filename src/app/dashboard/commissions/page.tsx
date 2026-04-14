@@ -44,6 +44,8 @@ export default function CommissionsPage() {
     await load(); setConfirming(null);
   };
 
+
+
   const filtered=commissions.filter(c=>{
     const ms=(c.referral_name??'').toLowerCase().includes(search.toLowerCase())||(c.client_name??'').toLowerCase().includes(search.toLowerCase());
     return ms&&(filterStatus==='todos'||c.status===filterStatus);

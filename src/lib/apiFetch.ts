@@ -22,9 +22,11 @@
 /** Lê o token JWT do store Zustand persistido no localStorage */
 function getToken(): string {
   if (typeof window === 'undefined') return '';
+
   try {
     const raw = localStorage.getItem('visitagropro-auth-v1');
     if (!raw) return '';
+
     const store = JSON.parse(raw);
     return store?.state?.token ?? '';
   } catch {
@@ -32,38 +34,54 @@ function getToken(): string {
   }
 }
 
-/**
- * apiFetch — wrapper autenticado sobre fetch().
- * Injeta Authorization: Bearer <token> em todas as requisições.
- * Parâmetros idênticos ao fetch() nativo.
- */
+function normalizeHeaders(initHeaders?: HeadersInit): Record<string, string> {
+  if (!initHeaders) return {};
+
+  if (initHeaders instanceof Headers) {
+    return Object.fromEntries(initHeaders.entries());
+  }
+
+  if (Array.isArray(initHeaders)) {
+    return Object.fromEntries(initHeaders);
+  }
+
+  return { ...initHeaders };
+}
+
 export async function apiFetch(
   input: RequestInfo | URL,
   init: RequestInit = {}
 ): Promise<Response> {
   const token = getToken();
+  const headers = normalizeHeaders(init.headers);
+
+  const isFormData =
+    typeof FormData !== 'undefined' && init.body instanceof FormData;
+
+  if (!isFormData && !headers['Content-Type']) {
+    headers['Content-Type'] = 'application/json';
+  }
+
+  if (token && !headers['Authorization']) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
   return fetch(input, {
     ...init,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
-      ...(init.headers || {}),
-    },
+    headers,
   });
 }
 
-/**
- * apiFetchJson — apiFetch que já faz .json() e lança erro se !res.ok
- * Útil para chamadas simples de leitura.
- */
-export async function apiFetchJson<T = any>(
+export async function apiFetchJson<T>(
   input: RequestInfo | URL,
   init: RequestInit = {}
 ): Promise<T> {
   const res = await apiFetch(input, init);
   const data = await res.json().catch(() => ({}));
+
   if (!res.ok) {
-    throw new Error(data?.error || `HTTP ${res.status}`);
+    throw new Error((data as any)?.error || `HTTP ${res.status}`);
   }
+
   return data as T;
 }

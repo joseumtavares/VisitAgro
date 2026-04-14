@@ -11,6 +11,12 @@ import Link from 'next/link';
 
 const InteractiveMap = dynamic(() => import('@/components/map/InteractiveMap'), { ssr: false });
 
+{loadError && (
+  <div className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+    {loadError}
+  </div>
+)}
+
 interface Stats {
   clients:number; products:number; orders:number; commissions:number;
   referrals:number; pendingCommissions:number; totalSales:number; pendingSales:number;
@@ -25,6 +31,36 @@ export default function DashboardPage() {
   // triggering a redirect to /auth/login even for authenticated users.
   const [hydrated, setHydrated] = useState(false);
   useEffect(() => { setHydrated(true); }, []);
+
+const [loadError, setLoadError] = useState('');
+
+useEffect(() => {
+  Promise.all([
+    apiFetch('/api/clients').then(r => r.json()),
+    apiFetch('/api/products').then(r => r.json()),
+    apiFetch('/api/orders').then(r => r.json()),
+    apiFetch('/api/commissions').then(r => r.json()),
+    apiFetch('/api/referrals').then(r => r.json()),
+  ])
+    .then(([c, p, o, com, ref]) => {
+      setLoadError('');
+      const orders = o.orders ?? [];
+      const commissions = com.commissions ?? [];
+
+      setStats({
+        clients: c.clients?.length ?? 0,
+        products: p.products?.length ?? 0,
+        orders: orders.length,
+        commissions: commissions.length,
+        referrals: ref.referrals?.length ?? 0,
+      });
+    })
+    .catch((e) => {
+      console.error(e);
+      setLoadError('Não foi possível carregar os indicadores do dashboard.');
+    });
+}, []);
+
 
   const [stats, setStats] = useState<Stats>({ clients:0,products:0,orders:0,commissions:0,referrals:0,pendingCommissions:0,totalSales:0,pendingSales:0 });
   const [loading, setLoading] = useState(true);

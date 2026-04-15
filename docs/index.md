@@ -13,6 +13,8 @@ Aqui você encontra os materiais de apoio organizados de forma clara, visual e p
 - [🌱 Visão geral do projeto](../README.md)
 - [📝 Changelog](./changelog.md)
 - [🆕 Updates da versão 0.9.4](./updates-v094.md)
+- [📋 Playbook operacional (lotes e prompts)](./playbook-operacional.md)
+- [🤖 AGENTES.md — regras para agentes e merge](../AGENTES.md)
 
 ### 🗄️ Banco de Dados
 - [⚙️ Setup do banco](./setup-banco.md)
@@ -39,6 +41,7 @@ docs/
 ├── setup-banco.md
 ├── changelog.md
 ├── updates-v094.md
+├── playbook-operacional.md
 └── auditoria-tecnica.md
 ```
 
@@ -60,3 +63,4 @@ Se você ativar o **GitHub Pages** usando `main` + `/docs`, esta página pode vi
 | [Changelog](./changelog.md) | Histórico resumido e organizado |
 | [Updates 0.9.4](./updates-v094.md) | Correções e melhorias mais recentes |
 | [Auditoria técnica](./auditoria-tecnica.md) | Diagnóstico e visão de estabilidade |
+| [Playbook operacional](./playbook-operacional.md) | Lotes, agentes, prompts e auditoria |

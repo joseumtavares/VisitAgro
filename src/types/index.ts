@@ -1,79 +1,106 @@
-// src/types/index.ts
-// Tipos públicos sincronizados com o schema atual (schema_atual_supabase.sql).
-// pass_hash e outros campos sensíveis foram removidos das interfaces públicas.
+// src/types/index.ts  (PATCH V2)
+// Tipos sincronizados com schema v0.9.5 (migration 020).
 
 // ── Enums / unions ────────────────────────────────────────────
 export type UserRole     = 'admin' | 'user' | 'manager';
 export type ClientStatus = 'interessado' | 'visitado' | 'agendado' | 'comprou' | 'naointeressado' | 'retornar' | 'outro';
 export type OrderStatus  = 'pendente' | 'aprovado' | 'pago' | 'cancelado' | 'faturado';
 export type VisitStatus  = 'agendado' | 'realizado' | 'cancelado' | 'nao_compareceu';
-export type PreRegistrationStatus =   | 'novo'  | 'contatado'   | 'qualificado'  | 'convertido'   | 'perdido';
+export type PreRegistrationStatus = 'novo' | 'contatado' | 'qualificado' | 'convertido' | 'perdido';
 export type CommissionStatus = 'pendente' | 'paga' | 'cancelada';
 export type ActivityType = 'Visita' | 'Ligação' | 'WhatsApp' | 'Email' | 'Reunião';
 
 // ── User ──────────────────────────────────────────────────────
-// pass_hash removido: campo sensível que nunca deve trafegar para o frontend.
 export interface User {
-  id:         string;
-  username:   string;
-  email?:     string | null;
-  name?:      string | null;
-  role:       UserRole;
-  active:     boolean;
-  workspace:  string;
+  id:          string;
+  username:    string;
+  email?:      string | null;
+  name?:       string | null;
+  role:        UserRole;
+  active:      boolean;
+  workspace:   string;
   company_id?: string | null;
   last_login?: string | null;
-  created_at: string;
+  created_at:  string;
   updated_at?: string;
 }
 
 // ── Client ────────────────────────────────────────────────────
 export interface Client {
-  id:         string;
-  workspace?: string;
-  name:       string;
-  document?:  string | null;
-  tel?:       string | null;
-  tel2?:      string | null;   // adicionado: schema tem coluna tel2
-  email?:     string | null;
-  status:     ClientStatus;
-  category?:  string | null;   // adicionado: schema tem coluna category
-  address?:   string | null;
-  city?:      string | null;
-  state?:     string | null;
-  zip_code?:  string | null;
-  lat?:       number | null;
-  lng?:       number | null;
-  maps_link?: string | null;   // adicionado: usado no frontend e backend
-  obs?:       string | null;
-  indicado?:  string | null;
-  user_id?:   string | null;
-  deleted_at?: string | null;  // adicionado: soft delete
-  created_at: string;
-  updated_at: string;
+  id:          string;
+  workspace?:  string;
+  name:        string;
+  document?:   string | null;
+  tel?:        string | null;
+  tel2?:       string | null;
+  email?:      string | null;
+  status:      ClientStatus;
+  category?:   string | null;
+  address?:    string | null;
+  city?:       string | null;
+  state?:      string | null;
+  zip_code?:   string | null;
+  lat?:        number | null;
+  lng?:        number | null;
+  maps_link?:  string | null;
+  obs?:        string | null;
+  indicado?:   string | null;
+  user_id?:    string | null;
+  deleted_at?: string | null;
+  created_at:  string;
+  updated_at:  string;
+}
+
+// ── ProductComponent ──────────────────────────────────────────
+// Linha da tabela product_components.
+// Adicionado em v0.9.5 (migration 020_product_components.sql).
+export interface ProductComponent {
+  id:                   string;
+  workspace?:           string;
+  composite_product_id: string;
+  component_product_id: string;
+  quantity:             number;
+  created_at:           string;
+  // Relação populada apenas no GET /api/products/[id]
+  component?: {
+    id:                string;
+    name:              string;
+    unit_price:        number;
+    cost_price:        number | null;
+    unit:              string;
+    rep_commission_pct: number | null;
+    active:            boolean;
+  } | null;
 }
 
 // ── Product ───────────────────────────────────────────────────
 export interface Product {
-  id:                 string;
-  workspace?:         string;
-  category_id?:       string | null;
-  name:               string;
-  description?:       string | null;
-  sku?:               string | null;   // adicionado
-  finame_code?:       string | null;   // adicionado
-  ncm_code?:          string | null;   // adicionado
-  unit_price:         number;
-  cost_price?:        number | null;   // adicionado
-  stock_qty:          number;
-  unit?:              string;
+  id:                  string;
+  workspace?:          string;
+  category_id?:        string | null;
+  name:                string;
+  description?:        string | null;
+  sku?:                string | null;
+  finame_code?:        string | null;
+  ncm_code?:           string | null;
+  unit_price:          number;
+  cost_price?:         number | null;
+  stock_qty:           number;
+  unit?:               string;
   rep_commission_pct?: number | null;
-  active:             boolean;
-  model?:             string | null;   // adicionado
-  color?:             string | null;   // adicionado
-  deleted_at?:        string | null;   // adicionado: soft delete
-  created_at:         string;
-  updated_at?:        string;
+  // REGRA DE COMISSÃO — PRODUTO COMPOSTO:
+  // Em pedidos, order_items.rep_commission_pct usa EXCLUSIVAMENTE este campo.
+  // Os percentuais dos componentes individuais são IGNORADOS.
+  active:              boolean;
+  model?:              string | null;
+  color?:              string | null;
+  // Produto composto — adicionado em v0.9.5
+  is_composite:        boolean;  // SEMPRE presente (DEFAULT false no banco)
+  // Componentes — populados apenas no GET /api/products/[id] quando is_composite = true
+  components?:         ProductComponent[];
+  deleted_at?:         string | null;
+  created_at:          string;
+  updated_at?:         string;
 }
 
 // ── Order ─────────────────────────────────────────────────────
@@ -89,32 +116,32 @@ export interface Order {
   status:           OrderStatus;
   total:            number;
   discount?:        number | null;
-  commission_type?: string | null;   // adicionado
+  commission_type?: string | null;
   commission_pct?:  number | null;
-  commission_value?: number | null;  // adicionado: usado em sales/page e commissionHelper
+  commission_value?: number | null;
   obs?:             string | null;
-  version?:         number | null;   // adicionado: optimistic locking
-  deleted_at?:      string | null;   // adicionado: soft delete
+  version?:         number | null;
+  deleted_at?:      string | null;
   created_at:       string;
   updated_at?:      string;
-  // relações opcionais retornadas pelo backend
   clients?:         { name: string } | null;
   referrals?:       { name: string } | null;
 }
 
 // ── OrderItem ─────────────────────────────────────────────────
 export interface OrderItem {
-  id:                 string;
-  order_id:           string;
-  product_id:         string;
-  product_name?:      string | null;
-  quantity:           number;
-  unit_price:         number;
-  total:              number;
+  id:                  string;
+  order_id:            string;
+  product_id:          string;
+  product_name?:       string | null;
+  quantity:            number;
+  unit_price:          number;
+  total:               number;
   rep_commission_pct?: number | null;
-  created_at:         string;
-  // relação opcional
-  products?:          { name: string } | null;
+  // Para produto composto: rep_commission_pct reflete o percentual
+  // do produto composto, não dos componentes.
+  created_at:          string;
+  products?:           { name: string } | null;
 }
 
 // ── Commission ────────────────────────────────────────────────
@@ -160,46 +187,45 @@ export interface Referral {
 
 // ── Visit ─────────────────────────────────────────────────────
 export interface Visit {
-  id:             string;
-  workspace?:     string;
-  client_id?:     string | null;
-  user_id?:       string | null;
-  activity_type?: ActivityType | null;
+  id:              string;
+  workspace?:      string;
+  client_id?:      string | null;
+  user_id?:        string | null;
+  activity_type?:  ActivityType | null;
   scheduled_date?: string | null;
-  visit_date?:    string | null;
-  status:         VisitStatus;
-  obs?:           string | null;
-  lat?:           number | null;
-  lng?:           number | null;
-  photos?:        any;
-  deleted_at?:    string | null;
-  created_at:     string;
-  updated_at?:    string;
+  visit_date?:     string | null;
+  status:          VisitStatus;
+  obs?:            string | null;
+  lat?:            number | null;
+  lng?:            number | null;
+  photos?:         any;
+  deleted_at?:     string | null;
+  created_at:      string;
+  updated_at?:     string;
 }
-// ── PreRegistration ─────────────────────────────────────────────
+
+// ── PreRegistration ───────────────────────────────────────────
 export interface PreRegistration {
-  id: string;
-  workspace?: string;
-  name: string;
-  tel?: string | null;
-  email?: string | null;
-  interest?: string | null;
-  source?: string | null;
-  status: PreRegistrationStatus;
-  obs?: string | null;
+  id:                   string;
+  workspace?:           string;
+  name:                 string;
+  tel?:                 string | null;
+  email?:               string | null;
+  interest?:            string | null;
+  source?:              string | null;
+  status:               PreRegistrationStatus;
+  obs?:                 string | null;
   converted_client_id?: string | null;
-
-  // campos adicionados na migration nova
-  referral_id?: string | null;
-  maps_link?: string | null;
-  lat?: number | null;
-  lng?: number | null;
-  point_reference?: string | null;
-  deleted_at?: string | null;
-
-  created_at: string;
-  updated_at: string;
+  referral_id?:         string | null;
+  maps_link?:           string | null;
+  lat?:                 number | null;
+  lng?:                 number | null;
+  point_reference?:     string | null;
+  deleted_at?:          string | null;
+  created_at:           string;
+  updated_at:           string;
 }
+
 // ── Category ──────────────────────────────────────────────────
 export interface Category {
   id:           string;

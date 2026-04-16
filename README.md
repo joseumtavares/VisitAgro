@@ -42,10 +42,10 @@ Desenvolvido em **Next.js 14 + Supabase**, com foco em produtividade operacional
 | Configurações | `/dashboard/settings` | ✅ OK |
 | Manutenção | `/dashboard/maintenance` | ✅ OK |
 | Logs administrativos | `/dashboard/logs` | ✅ OK *(admin-only)* |
+| Pré-cadastros / leads | `/dashboard/pre-registrations` | 🟡 Parcial (estrutura criada) |
 | Comissões representantes | — | 🔴 Pendente |
 | Controle de KM | — | 🟡 Pendente |
 | Ambientes / talhões | — | 🟡 Pendente |
-| Pré-cadastros / leads | — | 🟡 Pendente |
 
 ---
 

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAdmin, auditLog } from '@/lib/supabaseAdmin';
 import { generateCommission } from '@/lib/commissionHelper';
+import { generateRepCommissions } from '@/lib/repCommissionHelper';
 import { getRequestContext } from '@/lib/requestContext';
 
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
@@ -41,7 +42,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
 
   const { data: prev, error: prevError } = await admin
     .from('orders')
-    .select('id,status,referral_id,commission_value,total,client_id,date,commission_type,workspace,version,deleted_at')
+    .select('id,status,referral_id,commission_value,total,client_id,date,commission_type,workspace,version,deleted_at,user_id')
     .eq('id', params.id)
     .eq('workspace', workspace)
     .is('deleted_at', null)
@@ -60,9 +61,9 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     ...updateData
   } = body;
 
-  const payload: Record<string, any> = {
+  const payload: Record<string, unknown> = {
     ...updateData,
-    version: body.version,
+    version:    body.version,
     updated_at: new Date().toISOString(),
   };
 
@@ -81,21 +82,20 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     return NextResponse.json({ error: error.message }, { status });
   }
 
+  const transitionToPago =
+    prev.status !== 'pago' && order.status === 'pago';
+
+  // --- Comissão de indicador (referral) ---
   if (
-    prev.status !== 'pago' &&
-    order.status === 'pago' &&
+    transitionToPago &&
     order.referral_id &&
     Number(order.commission_value) > 0
   ) {
-    const { count, error: countError } = await admin
+    const { count } = await admin
       .from('commissions')
       .select('*', { count: 'exact', head: true })
       .eq('workspace', workspace)
       .eq('order_id', params.id);
-
-    if (countError) {
-      return NextResponse.json({ error: countError.message }, { status: 500 });
-    }
 
     if (!count || count === 0) {
       await generateCommission(admin, order, Number(order.commission_value));
@@ -105,6 +105,30 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
         { order_id: params.id, amount: order.commission_value, workspace },
         userId
       );
+    }
+  }
+
+  // --- Comissões de representante (rep_commissions) ---
+  if (transitionToPago && order.user_id) {
+    const { data: items } = await admin
+      .from('order_items')
+      .select('id,product_id,product_name,quantity,unit_price,total,rep_commission_pct')
+      .eq('order_id', params.id);
+
+    if (items && items.length > 0) {
+      const { created, skipped } = await generateRepCommissions(
+        admin,
+        order,
+        items
+      );
+
+      if (created > 0) {
+        await auditLog(
+          '[COMISSÃO REP] Geradas automaticamente',
+          { order_id: params.id, created, skipped, workspace },
+          userId
+        );
+      }
     }
   }
 
@@ -123,7 +147,7 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
   const { error } = await getAdmin()
     .from('orders')
     .update({
-      status: 'cancelado',
+      status:     'cancelado',
       deleted_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     })

@@ -1,157 +1,116 @@
 'use client';
 
-import { useState } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
+import { useAuthStore } from '@/store/authStore';
 import {
-  Menu, X, MapPin, LayoutDashboard, Users, Package,
-  Settings, ShoppingCart, DollarSign, UserCheck,
-  Wrench, ClipboardList, ChevronDown, ChevronRight, Tags, UserPlus
+  LayoutDashboard,
+  Users,
+  Package,
+  ShoppingCart,
+  TrendingUp,
+  UserCheck,
+  Settings,
+  Map,
+  LogOut,
+  Wrench,
+  ScrollText,
+  ClipboardList,
+  Award,
 } from 'lucide-react';
 
-interface Props { children: React.ReactNode; }
+interface NavItem {
+  href:       string;
+  label:      string;
+  icon:       React.ReactNode;
+  adminOnly?: boolean;
+}
 
-const NAV = [
-  { href: '/dashboard',             label: 'Dashboard',    icon: LayoutDashboard },
-  { href: '/dashboard/map',         label: 'Mapa',         icon: MapPin },
-  {
-    label: 'Cadastros', icon: Users, group: true,
-    children: [
-      { href: '/dashboard/clients',            label: 'Clientes',         icon: Users },
-      { href: '/dashboard/pre-registrations',  label: 'Pré-cadastros',    icon: UserPlus },
-      { href: '/dashboard/products',           label: 'Produtos',         icon: Package },
-      { href: '/dashboard/referrals',          label: 'Indicadores',      icon: UserCheck },
-    ]
-  },
-  {
-    label: 'Operações', icon: ShoppingCart, group: true,
-    children: [
-      { href: '/dashboard/sales',       label: 'Vendas',               icon: ShoppingCart },
-      { href: '/dashboard/commissions', label: 'Comissões Indicadores', icon: DollarSign },
-    ]
-  },
-  {
-    label: 'Administração', icon: Wrench, group: true,
-    children: [
-      { href: '/dashboard/maintenance', label: 'Manutenção',    icon: Wrench },
-      { href: '/dashboard/logs',        label: 'Logs',          icon: ClipboardList },
-      { href: '/dashboard/settings',    label: 'Configurações', icon: Settings },
-    ]
-  },
+const NAV_ITEMS: NavItem[] = [
+  { href: '/dashboard',                   label: 'Dashboard',           icon: <LayoutDashboard className="w-4 h-4" /> },
+  { href: '/dashboard/clients',           label: 'Clientes',            icon: <Users           className="w-4 h-4" /> },
+  { href: '/dashboard/products',          label: 'Produtos',            icon: <Package         className="w-4 h-4" /> },
+  { href: '/dashboard/sales',             label: 'Vendas',              icon: <ShoppingCart    className="w-4 h-4" /> },
+  { href: '/dashboard/referrals',         label: 'Indicadores',         icon: <UserCheck       className="w-4 h-4" /> },
+  { href: '/dashboard/commissions',       label: 'Com. Indicadores',    icon: <TrendingUp      className="w-4 h-4" /> },
+  { href: '/dashboard/rep-commissions',   label: 'Com. Representantes', icon: <Award           className="w-4 h-4" /> },
+  { href: '/dashboard/map',               label: 'Mapa',                icon: <Map             className="w-4 h-4" /> },
+  { href: '/dashboard/settings',          label: 'Configurações',       icon: <Settings        className="w-4 h-4" /> },
+  { href: '/dashboard/maintenance',       label: 'Manutenção',          icon: <Wrench          className="w-4 h-4" />, adminOnly: true },
+  { href: '/dashboard/logs',              label: 'Logs',                icon: <ScrollText      className="w-4 h-4" />, adminOnly: true },
 ];
 
-export default function DashboardShell({ children }: Props) {
-  const pathname = usePathname();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [openGroups, setOpenGroups] = useState<string[]>(['Cadastros','Operações']);
+export default function DashboardShell({ children }: { children: React.ReactNode }) {
+  const pathname   = usePathname();
+  const router     = useRouter();
+  const { user, logout } = useAuthStore();
 
-  const toggleGroup = (label: string) =>
-    setOpenGroups(g => g.includes(label) ? g.filter(x => x !== label) : [...g, label]);
+  const isAdmin = user?.role === 'admin';
 
-  const isActive = (href: string) => pathname === href;
-
-  const navItemClass = (active: boolean) =>
-    `flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-      active
-        ? 'bg-primary-600/20 text-primary-400 border border-primary-600/30'
-        : 'text-dark-400 hover:text-white hover:bg-dark-700'
-    }`;
+  const handleLogout = () => {
+    logout();
+    router.push('/auth/login');
+  };
 
   return (
-    <div className="flex h-screen bg-dark-900 overflow-hidden">
-      {/* Overlay mobile */}
-      {sidebarOpen && (
-        <div className="fixed inset-0 bg-black/60 z-20 lg:hidden" onClick={() => setSidebarOpen(false)} />
-      )}
-
+    <div className="min-h-screen bg-dark-950 flex">
       {/* Sidebar */}
-      <aside className={`
-        fixed lg:static inset-y-0 left-0 z-30 w-64 bg-dark-800 border-r border-dark-700
-        flex flex-col transition-transform duration-200
-        ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
-      `}>
+      <aside className="w-60 flex-shrink-0 bg-dark-900 border-r border-dark-800 flex flex-col">
         {/* Logo */}
-        <div className="p-5 border-b border-dark-700 flex items-center justify-between">
-          <div>
-            <h1 className="text-white font-bold text-lg leading-tight">🌾 AgroVisita</h1>
-            <p className="text-dark-500 text-xs mt-0.5">Pro v0.9.4</p>
+        <div className="px-4 py-5 border-b border-dark-800">
+          <div className="flex items-center gap-2">
+            <Map className="w-5 h-5 text-primary-400" />
+            <span className="font-bold text-white text-sm">VisitAgro Pro</span>
           </div>
-          <button onClick={() => setSidebarOpen(false)} className="lg:hidden text-dark-400 hover:text-white p-1">
-            <X className="w-5 h-5" />
-          </button>
+          {user && (
+            <p className="text-xs text-dark-400 mt-1 truncate">
+              {user.name || user.username}
+            </p>
+          )}
         </div>
 
         {/* Nav */}
-        <nav className="flex-1 overflow-y-auto p-3 space-y-1">
-          {NAV.map((item) => {
-            if ('group' in item && item.group) {
-              const open = openGroups.includes(item.label);
-              const Icon = item.icon;
-              const anyActive = item.children?.some(c => isActive(c.href));
-              return (
-                <div key={item.label}>
-                  <button
-                    onClick={() => toggleGroup(item.label)}
-                    className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                      anyActive ? 'text-primary-400' : 'text-dark-400 hover:text-white hover:bg-dark-700'
-                    }`}
-                  >
-                    <Icon className="w-4 h-4 flex-shrink-0" />
-                    <span className="flex-1 text-left">{item.label}</span>
-                    {open ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
-                  </button>
-                  {open && (
-                    <div className="ml-4 mt-1 space-y-0.5 border-l border-dark-700 pl-3">
-                      {item.children?.map(child => {
-                        const CIcon = child.icon;
-                        return (
-                          <Link
-                            key={child.href}
-                            href={child.href}
-                            onClick={() => setSidebarOpen(false)}
-                            className={navItemClass(isActive(child.href))}
-                          >
-                            <CIcon className="w-4 h-4 flex-shrink-0" />
-                            {child.label}
-                          </Link>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              );
-            }
-            const Icon = item.icon;
+        <nav className="flex-1 px-2 py-3 overflow-y-auto space-y-0.5">
+          {NAV_ITEMS.filter((item) => !item.adminOnly || isAdmin).map((item) => {
+            const active = item.href === '/dashboard'
+              ? pathname === '/dashboard'
+              : pathname.startsWith(item.href);
+
             return (
               <Link
-                key={(item as any).href}
-                href={(item as any).href}
-                onClick={() => setSidebarOpen(false)}
-                className={navItemClass(isActive((item as any).href))}
+                key={item.href}
+                href={item.href}
+                className={`
+                  flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors
+                  ${active
+                    ? 'bg-primary-600/20 text-primary-300'
+                    : 'text-dark-300 hover:bg-dark-800 hover:text-white'
+                  }
+                `}
               >
-                <Icon className="w-4 h-4 flex-shrink-0" />
+                {item.icon}
                 {item.label}
               </Link>
             );
           })}
         </nav>
+
+        {/* Logout */}
+        <div className="p-3 border-t border-dark-800">
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-dark-400 hover:bg-dark-800 hover:text-red-300 transition-colors"
+          >
+            <LogOut className="w-4 h-4" />
+            Sair
+          </button>
+        </div>
       </aside>
 
       {/* Main */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        {/* Mobile header */}
-        <header className="lg:hidden bg-dark-800 border-b border-dark-700 px-4 py-3 flex items-center gap-3 flex-shrink-0">
-          <button onClick={() => setSidebarOpen(true)} className="text-dark-400 hover:text-white p-1">
-            <Menu className="w-5 h-5" />
-          </button>
-          <h1 className="text-white font-semibold text-sm">🌾 AgroVisita Pro</h1>
-        </header>
-
-        {/* Content */}
-        <main className="flex-1 overflow-y-auto p-4 lg:p-6">
-          {children}
-        </main>
-      </div>
+      <main className="flex-1 overflow-y-auto p-6 text-white">
+        {children}
+      </main>
     </div>
   );
 }

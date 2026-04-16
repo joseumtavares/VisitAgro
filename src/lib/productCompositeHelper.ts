@@ -1,19 +1,16 @@
-// src/lib/productCompositeHelper.ts  (PATCH V2)
+// src/lib/productCompositeHelper.ts  (PATCH V2 — fix build)
 // Helpers para produto composto.
 //
 // DECISÃO ARQUITETURAL — Opção A (bloqueio simples):
 //   Produto composto NÃO pode ter outro produto composto como componente.
-//   Consequência: ciclos de composição são IMPOSSÍVEIS por construção.
-//   Portanto: BFS de detecção de ciclo foi REMOVIDO.
-//   Justificativa: BFS exigia múltiplas queries, era complexo de manter
-//   e protegia um cenário que deixou de existir com o bloqueio de Opção A.
-//   Se futuramente compostos-de-compostos forem necessários,
-//   reintroduzir BFS + permissão explícita de forma controlada.
+//   Ciclos são impossíveis por construção. BFS removido.
 //
-// TRANSAÇÃO:
-//   POST e PUT de produto composto usam a RPC `upsert_composite_product`
-//   que executa toda a operação atomicamente no banco.
-//   Não há operações em múltiplas chamadas sem transação.
+// NOTA DE TIPAGEM:
+//   O cliente Supabase retorna joins como array mesmo em relações 1-1.
+//   Ex: component: [{...}] em vez de component: {...}
+//   Normalizamos para objeto único nas funções abaixo.
+//   Cast direto para ComponentRow[] causaria erro de build —
+//   por isso usamos `as unknown[]` e mapeamos manualmente.
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 
@@ -34,8 +31,24 @@ export interface UpsertCompositeError {
   error: string;
 }
 
-// ── Validação rápida no backend (antes de chamar RPC) ─────────
-// Previne round-trip desnecessário para erros óbvios.
+export interface ComponentRow {
+  id:                   string;
+  composite_product_id: string;
+  component_product_id: string;
+  quantity:             number;
+  created_at:           string;
+  component: {
+    id:                 string;
+    name:               string;
+    unit_price:         number;
+    cost_price:         number | null;
+    unit:               string;
+    rep_commission_pct: number | null;
+    active:             boolean;
+  } | null;
+}
+
+// ── Validação rápida antes de chamar a RPC ────────────────────
 
 export interface QuickValidationResult {
   valid: boolean;
@@ -67,25 +80,8 @@ export function validateComponentsQuick(
   return { valid: true };
 }
 
-// ── RPC: upsert atômico via Supabase ─────────────────────────
+// ── RPC: upsert atômico ───────────────────────────────────────
 
-/**
- * Cria ou atualiza um produto composto de forma atômica via RPC.
- *
- * A função `upsert_composite_product` no banco cuida de:
- *  - validar cada componente (existe, ativo, não-deletado, mesmo workspace)
- *  - bloquear composto-de-composto
- *  - calcular cost_price = Σ (qty × cost_price componente)
- *  - INSERT ou UPDATE no produto
- *  - DELETE + INSERT atômico dos componentes
- *  - tudo dentro de uma única transação PL/pgSQL
- *
- * @param admin        - cliente supabase service_role
- * @param productId    - null para INSERT, uuid para UPDATE
- * @param workspace    - workspace do usuário
- * @param productData  - campos do produto (sem id, workspace, is_composite, cost_price)
- * @param components   - lista de {component_product_id, quantity}
- */
 export async function upsertCompositeProduct(
   admin: SupabaseClient,
   productId: string | null,
@@ -104,34 +100,23 @@ export async function upsertCompositeProduct(
     return { data: null, error: error.message };
   }
 
-  // RPC retorna jsonb — verificar se veio erro de negócio
-  const result = data as UpsertCompositeResult | UpsertCompositeError;
-
-  if ('error' in result && result.error) {
+  // RPC retorna jsonb — checar se veio campo error de negócio
+  const result = data as Record<string, unknown>;
+  if (result && typeof result.error === 'string' && result.error) {
     return { data: null, error: result.error };
   }
 
-  return { data: result as UpsertCompositeResult, error: null };
+  return {
+    data: {
+      product_id:      result.product_id as string,
+      cost_price:      result.cost_price as number,
+      component_count: result.component_count as number,
+    },
+    error: null,
+  };
 }
 
 // ── Buscar componentes de um produto composto ─────────────────
-
-export interface ComponentRow {
-  id:                   string;
-  composite_product_id: string;
-  component_product_id: string;
-  quantity:             number;
-  created_at:           string;
-  component: {
-    id:                string;
-    name:              string;
-    unit_price:        number;
-    cost_price:        number | null;
-    unit:              string;
-    rep_commission_pct: number | null;
-    active:            boolean;
-  } | null;
-}
 
 export async function fetchProductComponents(
   admin: SupabaseClient,
@@ -158,7 +143,35 @@ export async function fetchProductComponents(
     return [];
   }
 
-  return (data ?? []) as ComponentRow[];
+  if (!data) return [];
+
+  // Cast via unknown para evitar conflito entre tipo inferido pelo Supabase
+  // (component como array) e o tipo declarado (component como objeto único).
+  return (data as unknown[]).map((raw) => {
+    const row = raw as {
+      id: string;
+      composite_product_id: string;
+      component_product_id: string;
+      quantity: number;
+      created_at: string;
+      component: unknown;
+    };
+
+    // Supabase retorna join 1-1 como array — pegar primeiro elemento
+    const compRaw = row.component;
+    const component = Array.isArray(compRaw)
+      ? (compRaw[0] as ComponentRow['component'] ?? null)
+      : (compRaw as ComponentRow['component'] ?? null);
+
+    return {
+      id:                   row.id,
+      composite_product_id: row.composite_product_id,
+      component_product_id: row.component_product_id,
+      quantity:             row.quantity,
+      created_at:           row.created_at,
+      component,
+    } satisfies ComponentRow;
+  });
 }
 
 // ── Verificar se produto é componente de algum composto ativo ─
@@ -168,7 +181,6 @@ export async function isProductUsedAsComponent(
   productId: string,
   workspace: string
 ): Promise<{ used: boolean; compositeName?: string }> {
-  // Busca vinculos onde o composto NÃO está deletado
   const { data, error } = await admin
     .from('product_components')
     .select(`
@@ -183,25 +195,28 @@ export async function isProductUsedAsComponent(
 
   if (error || !data) return { used: false };
 
-  // Filtrar apenas vínculos cujo produto composto NÃO está deletado
-  const activeLinks = data.filter((row: any) => {
-    const composite = Array.isArray(row.composite) ? row.composite[0] : row.composite;
-    return composite && composite.deleted_at == null;
+  // Filtrar vínculos cujo composto pai NÃO está deletado
+  const activeLinks = (data as unknown[]).filter((raw) => {
+    const row = raw as { composite: unknown };
+    const comp = Array.isArray(row.composite) ? row.composite[0] : row.composite;
+    return comp != null && (comp as { deleted_at: unknown }).deleted_at == null;
   });
 
   if (activeLinks.length === 0) return { used: false };
 
-  const composite = Array.isArray(activeLinks[0].composite)
-    ? activeLinks[0].composite[0]
-    : activeLinks[0].composite;
+  const firstRow = activeLinks[0] as { composite: unknown };
+  const firstComp = Array.isArray(firstRow.composite)
+    ? firstRow.composite[0]
+    : firstRow.composite;
 
   return {
     used: true,
-    compositeName: composite?.name ?? 'produto composto',
+    compositeName:
+      (firstComp as { name?: string } | null)?.name ?? 'produto composto',
   };
 }
 
-// ── Limpar vínculos ao fazer soft-delete de produto composto ──
+// ── Limpar vínculos ao soft-delete de produto composto ────────
 
 export async function clearCompositeComponents(
   admin: SupabaseClient,

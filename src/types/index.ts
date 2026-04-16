@@ -242,3 +242,32 @@ export interface Workspace {
   created_at?: string | null;
   updated_at?: string | null;
 }
+
+// ── Pré-cadastros / Leads ─────────────────────────────────────
+export type PreRegistrationStatus =
+  | 'novo'
+  | 'contatado'
+  | 'qualificado'
+  | 'convertido'
+  | 'perdido';
+
+export interface PreRegistration {
+  id: string;
+  workspace: string;
+  name: string;
+  tel?: string | null;
+  email?: string | null;
+  interest?: string | null;
+  source?: string | null;
+  status: PreRegistrationStatus;
+  obs?: string | null;
+  converted_client_id?: string | null;
+  referral_id?: string | null;
+  maps_link?: string | null;
+  lat?: number | null;
+  lng?: number | null;
+  point_reference?: string | null;
+  deleted_at?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+}

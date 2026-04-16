@@ -218,6 +218,18 @@ CREATE TABLE public.pre_registrations (
   CONSTRAINT pre_registrations_workspace_fkey FOREIGN KEY (workspace) REFERENCES public.workspaces(id),
   CONSTRAINT pre_registrations_referral_id_fkey FOREIGN KEY (referral_id) REFERENCES public.referrals(id)
 );
+CREATE TABLE public.product_components (
+  id text NOT NULL DEFAULT (gen_random_uuid())::text,
+  workspace text NOT NULL DEFAULT 'principal'::text,
+  composite_product_id text NOT NULL,
+  component_product_id text NOT NULL,
+  quantity numeric NOT NULL DEFAULT 1 CHECK (quantity > 0::numeric),
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT product_components_pkey PRIMARY KEY (id),
+  CONSTRAINT product_components_composite_fkey FOREIGN KEY (composite_product_id) REFERENCES public.products(id),
+  CONSTRAINT product_components_component_fkey FOREIGN KEY (component_product_id) REFERENCES public.products(id),
+  CONSTRAINT product_components_workspace_fkey FOREIGN KEY (workspace) REFERENCES public.workspaces(id)
+);
 CREATE TABLE public.products (
   id text NOT NULL DEFAULT (gen_random_uuid())::text,
   workspace text NOT NULL DEFAULT 'principal'::text,
@@ -238,6 +250,7 @@ CREATE TABLE public.products (
   model text,
   color text,
   deleted_at timestamp with time zone,
+  is_composite boolean NOT NULL DEFAULT false,
   CONSTRAINT products_pkey PRIMARY KEY (id),
   CONSTRAINT products_category_id_fkey FOREIGN KEY (category_id) REFERENCES public.categories(id),
   CONSTRAINT products_workspace_fkey FOREIGN KEY (workspace) REFERENCES public.workspaces(id)

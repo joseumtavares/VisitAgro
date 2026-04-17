@@ -317,10 +317,13 @@ export default function ProductsPage() {
                       </td>
                       <td className="px-4 py-3 text-xs text-dark-400 font-mono">{p.sku || '—'}</td>
                       <td className="px-4 py-3 text-right text-sm text-white font-medium">
-                        {cur(p.unit_price)}
+                         {cur(p.unit_price ?? 0)}
                       </td>
                       <td className="px-4 py-3 text-right text-xs">
-                        <span className="text-dark-400">{p.cost_price ? cur(p.cost_price) : '—'}</span>
+                        <span className="text-dark-400">
+                            {p.cost_price != null ? cur(p.cost_price) : '—'}
+                       </span>
+                      </td>
                         {p.is_composite && p.cost_price ? (
                           <div className="text-cyan-500/60 text-xs">calculado</div>
                         ) : null}

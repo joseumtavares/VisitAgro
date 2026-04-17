@@ -314,17 +314,15 @@ export default function ProductsPage() {
                         <span className="inline-flex items-center gap-1 text-xs text-dark-300">
                           <Tag className="w-3 h-3" />{catName(p.category_id)}
                         </span>
-                      </td>
-                      <td className="px-4 py-3 text-xs text-dark-400 font-mono">{p.sku || '—'}</td>
+                      </td>                      <td className="px-4 py-3 text-xs text-dark-400 font-mono">{p.sku || '—'}</td>
                       <td className="px-4 py-3 text-right text-sm text-white font-medium">
-                         {cur(p.unit_price ?? 0)}
+                        {cur(p.unit_price ?? 0)}
                       </td>
                       <td className="px-4 py-3 text-right text-xs">
                         <span className="text-dark-400">
-                            {p.cost_price != null ? cur(p.cost_price) : '—'}
-                       </span>
-                      </td>
-                        {p.is_composite && p.cost_price ? (
+                          {p.cost_price != null ? cur(p.cost_price) : '—'}
+                        </span>
+                        {p.is_composite === true && p.cost_price != null ? (
                           <div className="text-cyan-500/60 text-xs">calculado</div>
                         ) : null}
                       </td>

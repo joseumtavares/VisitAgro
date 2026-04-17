@@ -62,33 +62,37 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const orderId = crypto.randomUUID();
-    let commissionValue = 0;
-    const total = Number(body.total ?? 0);
+    const referralId =
+      body.referral_id && String(body.referral_id).trim() !== ''
+        ? String(body.referral_id)
+        : null;
 
-    if (body.referral_id) {
+    let commissionValue = 0;
+    if (referralId) {
       const { data: ref } = await admin
         .from('referrals')
-        .select('commission_type,commission_pct,commission,workspace,deleted_at')
-        .eq('id', body.referral_id)
+        .select('id,commission_type,commission_pct,commission,workspace,deleted_at')
+        .eq('id', referralId)
         .eq('workspace', workspace)
         .is('deleted_at', null)
         .maybeSingle();
 
-      if (ref) {
-        commissionValue =
-          ref.commission_type === 'percent'
-            ? (total * Number(ref.commission_pct ?? 0)) / 100
-            : Number(ref.commission ?? 0);
+      if (!ref) {
+        return NextResponse.json(
+          { error: 'Indicador inválido ou inexistente.' },
+          { status: 400 }
+        );
       }
+
+      const total = Number(body.total ?? 0);
+      commissionValue =
+        ref.commission_type === 'percent'
+          ? (total * Number(ref.commission_pct ?? 0)) / 100
+          : Number(ref.commission ?? 0);
     }
 
-    const {
-      items: _items,
-      payment_type: _paymentType,
-      ...orderData
-    } = body;
-
+    const orderId = crypto.randomUUID();
+    const { items: _items, payment_type: _paymentType, ...orderData } = body;
     const now = new Date().toISOString();
 
     const { data: order, error } = await admin
@@ -96,6 +100,7 @@ export async function POST(req: NextRequest) {
       .insert([
         {
           ...orderData,
+          referral_id: referralId,
           id: orderId,
           workspace,
           commission_value: commissionValue,
@@ -125,19 +130,18 @@ export async function POST(req: NextRequest) {
       }));
 
       const { error: itemsError } = await admin.from('order_items').insert(itemsPayload);
-
       if (itemsError) {
         return NextResponse.json({ error: itemsError.message }, { status: 500 });
       }
     }
 
-    if (body.status === 'pago' && body.referral_id && commissionValue > 0) {
+    if (body.status === 'pago' && referralId && commissionValue > 0) {
       await generateCommission(admin, order, commissionValue);
     }
 
     await auditLog(
       '[VENDA] Pedido criado',
-      { order_id: orderId, total, workspace },
+      { order_id: orderId, total: Number(body.total ?? 0), workspace },
       userId
     );
 

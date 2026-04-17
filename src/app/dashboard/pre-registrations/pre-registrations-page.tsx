@@ -393,7 +393,7 @@ export default function PreRegistrationsPage() {
                       <td className="px-4 py-3">
                         <div className="text-white font-medium text-sm">{lead.name}</div>
                         <div className="text-dark-500 text-xs mt-0.5">
-                          {new Date(lead.created_at).toLocaleDateString('pt-BR')}
+                          {lead.created_at ? new Date(lead.created_at).toLocaleDateString('pt-BR') : '—'}
                         </div>
                       </td>
                       <td className="px-4 py-3">

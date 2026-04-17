@@ -313,11 +313,14 @@ CREATE TABLE public.rep_commissions (
   reprocessed_at timestamp with time zone,
   created_at timestamp with time zone DEFAULT now(),
   updated_at timestamp with time zone DEFAULT now(),
+  rep_id text,
+  rep_name text,
   CONSTRAINT rep_commissions_pkey PRIMARY KEY (id),
   CONSTRAINT rep_commissions_order_id_fkey FOREIGN KEY (order_id) REFERENCES public.orders(id),
   CONSTRAINT rep_commissions_client_id_fkey FOREIGN KEY (client_id) REFERENCES public.clients(id),
   CONSTRAINT rep_commissions_product_id_fkey FOREIGN KEY (product_id) REFERENCES public.products(id),
-  CONSTRAINT rep_commissions_workspace_fkey FOREIGN KEY (workspace) REFERENCES public.workspaces(id)
+  CONSTRAINT rep_commissions_workspace_fkey FOREIGN KEY (workspace) REFERENCES public.workspaces(id),
+  CONSTRAINT rep_commissions_rep_id_fkey FOREIGN KEY (rep_id) REFERENCES public.users(id)
 );
 CREATE TABLE public.settings (
   id text NOT NULL DEFAULT (gen_random_uuid())::text,

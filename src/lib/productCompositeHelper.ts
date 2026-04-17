@@ -158,7 +158,32 @@ export async function fetchProductComponents(
     return [];
   }
 
-  return (data ?? []) as ComponentRow[];
+  return (data ?? []).map((row: any): ComponentRow => {
+    const component = Array.isArray(row.component)
+      ? (row.component[0] ?? null)
+      : (row.component ?? null);
+
+    return {
+      id: row.id,
+      composite_product_id: row.composite_product_id,
+      component_product_id: row.component_product_id,
+      quantity: Number(row.quantity),
+      created_at: row.created_at,
+      component: component
+        ? {
+            id: component.id,
+            name: component.name,
+            unit_price: Number(component.unit_price),
+            cost_price: component.cost_price != null ? Number(component.cost_price) : null,
+            unit: component.unit,
+            rep_commission_pct: component.rep_commission_pct != null
+              ? Number(component.rep_commission_pct)
+              : null,
+            active: Boolean(component.active),
+          }
+        : null,
+    };
+  });
 }
 
 // ── Verificar se produto é componente de algum composto ativo ─

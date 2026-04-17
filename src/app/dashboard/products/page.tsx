@@ -321,9 +321,10 @@ export default function ProductsPage() {
                       </td>
                       <td className="px-4 py-3 text-right text-xs">
                         <span className="text-dark-400">
-                          {p.cost_price != null ? cur(p.cost_price) : '—'}
-                        </span>
-                        {p.is_composite && p.cost_price != null ? (
+                            {p.cost_price != null ? cur(p.cost_price) : '—'}
+                       </span>
+                      </td>
+                        {p.is_composite && p.cost_price ? (
                           <div className="text-cyan-500/60 text-xs">calculado</div>
                         ) : null}
                       </td>
@@ -349,7 +350,7 @@ export default function ProductsPage() {
                             <Pencil className="w-4 h-4" />
                           </button>
                           <button
-                            onClick={() => remove(p.id, p.is_composite)}
+                            onClick={() => remove(p.id, p.is_composite === true)}
                             className="text-dark-400 hover:text-red-400 p-1.5 rounded hover:bg-dark-700 transition-colors"
                             title="Desativar"
                           >

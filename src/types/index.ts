@@ -75,6 +75,15 @@ export interface Product {
   updated_at?: string | null;
 }
 
+export interface ProductComponent {
+  id: string;
+  workspace: string;
+  composite_product_id: string;
+  component_product_id: string;
+  quantity: number;
+  created_at?: string | null;
+}
+
 export interface Category {
   id: string;
   workspace: string;

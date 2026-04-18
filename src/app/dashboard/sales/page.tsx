@@ -210,7 +210,6 @@ export default function SalesPage() {
         ...form,
         referral_id: form.referral_id || null,
         total,
-        commission_value: calcCommission(),
       };
 
       const r = await apiFetch('/api/orders', {
@@ -361,7 +360,6 @@ export default function SalesPage() {
                     <th className="text-left px-4 py-3">Cliente</th>
                     <th className="text-left px-4 py-3">Indicador</th>
                     <th className="text-right px-4 py-3">Total</th>
-                    <th className="text-right px-4 py-3">Comissão</th>
                     <th className="text-left px-4 py-3">Status</th>
                     <th className="text-right px-4 py-3">Ação</th>
                   </tr>
@@ -385,12 +383,6 @@ export default function SalesPage() {
                         </td>
                         <td className="px-4 py-3 text-right text-sm text-white font-medium">
                           {Number(o.total).toLocaleString('pt-BR', {
-                            style: 'currency',
-                            currency: 'BRL',
-                          })}
-                        </td>
-                        <td className="px-4 py-3 text-right text-sm text-green-400">
-                          {Number(o.commission_value ?? 0).toLocaleString('pt-BR', {
                             style: 'currency',
                             currency: 'BRL',
                           })}
@@ -610,17 +602,6 @@ export default function SalesPage() {
                     </span>
                   </div>
 
-                  {form.referral_id && (
-                    <div className="flex justify-between text-sm">
-                      <span className="text-dark-400">Comissão indicador</span>
-                      <span className="text-green-400">
-                        {calcCommission().toLocaleString('pt-BR', {
-                          style: 'currency',
-                          currency: 'BRL',
-                        })}
-                      </span>
-                    </div>
-                  )}
                 </div>
               )}
             </div>

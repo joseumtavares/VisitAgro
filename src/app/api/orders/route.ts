@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAdmin, auditLog } from '@/lib/supabaseAdmin';
 import { generateCommission } from '@/lib/commissionHelper';
+import { generateRepCommissions } from '@/lib/repCommissionHelper';
 
 export async function GET(req: NextRequest) {
   const workspace = req.headers.get('x-workspace') || 'principal';
@@ -103,6 +104,7 @@ export async function POST(req: NextRequest) {
           referral_id: referralId,
           id: orderId,
           workspace,
+          user_id: userId ?? null,
           commission_value: commissionValue,
           commission_type: orderData.commission_type || 'percent',
           created_at: now,
@@ -116,8 +118,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
+    let itemsPayload: any[] = [];
+
     if (orderItems.length) {
-      const itemsPayload = orderItems.map((item: any) => ({
+      itemsPayload = orderItems.map((item: any) => ({
         id: crypto.randomUUID(),
         order_id: orderId,
         product_id: item.product_id,
@@ -137,6 +141,17 @@ export async function POST(req: NextRequest) {
 
     if (body.status === 'pago' && referralId && commissionValue > 0) {
       await generateCommission(admin, order, commissionValue);
+    }
+
+    if (body.status === 'pago' && userId && itemsPayload.length > 0) {
+      const { created, skipped } = await generateRepCommissions(admin, order, itemsPayload);
+      if (created > 0) {
+        await auditLog(
+          '[COMISSÃO REP] Geradas automaticamente (POST)',
+          { order_id: orderId, created, skipped, workspace },
+          userId
+        );
+      }
     }
 
     await auditLog(

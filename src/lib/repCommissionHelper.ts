@@ -49,6 +49,7 @@ export async function generateRepCommissions(
     .from('users')
     .select('id,name,username')
     .eq('id', order.user_id)
+    .eq('workspace', order.workspace)
     .maybeSingle();
 
   const repName = repUser?.name || repUser?.username || '';
@@ -59,6 +60,8 @@ export async function generateRepCommissions(
         .from('clients')
         .select('name')
         .eq('id', order.client_id)
+        .eq('workspace', order.workspace)
+        .is('deleted_at', null)
         .maybeSingle()
     : { data: null };
 
@@ -93,7 +96,7 @@ export async function generateRepCommissions(
 
     const now = new Date().toISOString();
 
-    await admin.from('rep_commissions').insert([{
+    const { error: insertError } = await admin.from('rep_commissions').insert([{
       id:                 crypto.randomUUID(),
       workspace:          order.workspace,
       rep_id:             order.user_id,
@@ -114,6 +117,12 @@ export async function generateRepCommissions(
       created_at:         now,
       updated_at:         now,
     }]);
+
+    if (insertError) {
+      console.error('[repCommissionHelper] insert error:', insertError.message, { order_item_id: item.id });
+      skipped++;
+      continue;
+    }
 
     created++;
   }

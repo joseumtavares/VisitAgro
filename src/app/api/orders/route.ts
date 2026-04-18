@@ -42,17 +42,21 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
-    const admin = getAdmin();
+    const body   = await req.json();
+    const admin  = getAdmin();
     const workspace = req.headers.get('x-workspace') || 'principal';
-    // ── CORREÇÃO 1: userId sempre lido do header JWT (middleware garante) ──
-    const userId = req.headers.get('x-user-id') || undefined;
+
+    // ── userId: lido do header injetado pelo middleware (JWT → x-user-id) ──
+    // Nunca depende do body — garante rastreabilidade do representante.
+    const rawUserId = req.headers.get('x-user-id');
+    const userId    = rawUserId && rawUserId.trim() !== '' ? rawUserId.trim() : null;
 
     if (!body.client_id) {
       return NextResponse.json({ error: 'Cliente obrigatório' }, { status: 400 });
     }
 
-    const rawItems = Array.isArray(body.items) ? body.items : [];
+    // ── Itens ────────────────────────────────────────────────────────────
+    const rawItems   = Array.isArray(body.items) ? body.items : [];
     const orderItems = rawItems.filter(
       (item: any) => item.product_id && Number(item.quantity) > 0
     );
@@ -64,113 +68,138 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const orderId = crypto.randomUUID();
-    let commissionValue = 0;
-    const total = Number(body.total ?? 0);
+    // ── Indicador / comissão ─────────────────────────────────────────────
+    const referralId =
+      body.referral_id && String(body.referral_id).trim() !== ''
+        ? String(body.referral_id).trim()
+        : null;
 
-    if (body.referral_id) {
+    let commissionValue = 0;
+
+    if (referralId) {
       const { data: ref } = await admin
         .from('referrals')
-        .select('commission_type,commission_pct,commission,workspace,deleted_at')
-        .eq('id', body.referral_id)
+        .select('id,commission_type,commission_pct,commission')
+        .eq('id', referralId)
         .eq('workspace', workspace)
         .is('deleted_at', null)
         .maybeSingle();
 
       if (ref) {
+        const total = Number(body.total ?? 0);
         commissionValue =
           ref.commission_type === 'percent'
             ? (total * Number(ref.commission_pct ?? 0)) / 100
             : Number(ref.commission ?? 0);
       }
+      // Se ref nulo (indicador removido), apenas ignora a comissão
     }
 
-    const {
-      items: _items,
-      payment_type: _paymentType,
-      ...orderData
-    } = body;
-
+    // ── Construir payload do pedido ───────────────────────────────────────
+    const orderId = crypto.randomUUID();
+    const { items: _items, payment_type: _pt, ...orderData } = body;
     const now = new Date().toISOString();
 
-    const { data: order, error } = await admin
+    const insertPayload = {
+      ...orderData,
+      id:               orderId,
+      workspace,
+      referral_id:      referralId,          // normalizado
+      user_id:          userId,              // explícito — nunca vem do body
+      commission_value: commissionValue,
+      commission_type:  orderData.commission_type || 'percent',
+      created_at:       now,
+      updated_at:       now,
+    };
+
+    // ── Inserir pedido ───────────────────────────────────────────────────
+    const { data: order, error: orderError } = await admin
       .from('orders')
-      .insert([
-        {
-          ...orderData,
-          id: orderId,
-          workspace,
-          // ── CORREÇÃO 2: user_id explícito do usuário autenticado —————
-          // Garante que o pedido sempre registra o representante correto,
-          // independente de o frontend enviar ou não o campo no body.
-          user_id: userId ?? null,
-          commission_value: commissionValue,
-          commission_type: orderData.commission_type || 'percent',
-          created_at: now,
-          updated_at: now,
-        },
-      ])
+      .insert([insertPayload])
       .select()
       .single();
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+    if (orderError) {
+      console.error('[orders POST] Erro ao inserir pedido:', orderError.message);
+      return NextResponse.json({ error: orderError.message }, { status: 500 });
     }
 
+    // ── Inserir itens ────────────────────────────────────────────────────
     let itemsPayload: any[] = [];
 
-    if (orderItems.length) {
+    if (orderItems.length > 0) {
       itemsPayload = orderItems.map((item: any) => ({
-        id: crypto.randomUUID(),
-        order_id: orderId,
-        product_id: item.product_id,
-        product_name: item.product_name || '',
-        quantity: Number(item.quantity) || 1,
-        unit_price: Number(item.unit_price) || 0,
-        total: (Number(item.quantity) || 1) * (Number(item.unit_price) || 0),
+        id:                 crypto.randomUUID(),
+        order_id:           orderId,
+        product_id:         item.product_id,
+        product_name:       item.product_name || '',
+        quantity:           Number(item.quantity) || 1,
+        unit_price:         Number(item.unit_price) || 0,
+        total:              (Number(item.quantity) || 1) * (Number(item.unit_price) || 0),
         rep_commission_pct: Number(item.rep_commission_pct) || 0,
-        created_at: now,
+        created_at:         now,
       }));
 
-      const { error: itemsError } = await admin.from('order_items').insert(itemsPayload);
+      const { error: itemsError } = await admin
+        .from('order_items')
+        .insert(itemsPayload);
 
       if (itemsError) {
+        console.error('[orders POST] Erro ao inserir itens:', itemsError.message);
         return NextResponse.json({ error: itemsError.message }, { status: 500 });
       }
     }
 
     // ── Comissão de indicador (referral) ─────────────────────────────────
-    if (body.status === 'pago' && body.referral_id && commissionValue > 0) {
+    if (body.status === 'pago' && referralId && commissionValue > 0) {
       await generateCommission(admin, order, commissionValue);
     }
 
-    // ── CORREÇÃO 3: Comissões de representante no POST ────────────────────
-    // Quando o pedido já nasce como 'pago' e tem user_id (representante),
-    // gera rep_commissions por item, igual ao que o PUT já fazia.
+    // ── Comissões de representante ─────────────────────────────────────
+    // Condição: pedido já nasce pago E temos userId E há itens
     if (body.status === 'pago' && userId && itemsPayload.length > 0) {
-      const { created, skipped } = await generateRepCommissions(
-        admin,
-        order,
-        itemsPayload
-      );
+      const repResult = await generateRepCommissions(admin, order, itemsPayload);
 
-      if (created > 0) {
-        await auditLog(
-          '[COMISSÃO REP] Geradas automaticamente (POST)',
-          { order_id: orderId, created, skipped, workspace },
-          userId
-        );
-      }
+      await auditLog(
+        '[VENDA] rep_commissions tentativa via POST',
+        {
+          order_id:   orderId,
+          user_id:    userId,
+          workspace,
+          items:      itemsPayload.length,
+          ...repResult,
+        },
+        userId ?? undefined
+      );
+    } else if (body.status === 'pago') {
+      // Log quando pago mas sem userId — ajuda a diagnosticar
+      await auditLog(
+        '[VENDA] rep_commissions ignorado — razão registrada',
+        {
+          order_id:        orderId,
+          workspace,
+          user_id_present: !!userId,
+          items_count:     itemsPayload.length,
+          status:          body.status,
+        }
+      );
     }
 
     await auditLog(
       '[VENDA] Pedido criado',
-      { order_id: orderId, total, workspace },
-      userId
+      {
+        order_id: orderId,
+        total:    Number(body.total ?? 0),
+        status:   body.status,
+        user_id:  userId,
+        workspace,
+      },
+      userId ?? undefined
     );
 
     return NextResponse.json({ order }, { status: 201 });
   } catch (e: any) {
+    console.error('[orders POST] Exceção:', e.message);
     return NextResponse.json({ error: e.message }, { status: 500 });
   }
 }

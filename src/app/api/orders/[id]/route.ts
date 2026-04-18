@@ -42,7 +42,10 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
 
   const { data: prev, error: prevError } = await admin
     .from('orders')
-    .select('id,status,referral_id,commission_value,total,client_id,date,commission_type,workspace,version,deleted_at,user_id')
+    .select(
+      'id,status,referral_id,commission_value,total,client_id,date,' +
+      'commission_type,workspace,version,deleted_at,user_id'
+    )
     .eq('id', params.id)
     .eq('workspace', workspace)
     .is('deleted_at', null)
@@ -61,11 +64,23 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     ...updateData
   } = body;
 
+  // ── Se o pedido não tem user_id mas o usuário logado é conhecido,
+  //    grava o user_id agora para habilitar comissões de representante.
+  //    Isso corrige pedidos criados antes do fix do POST.
+  const resolvedUserId: string | null =
+    prev.user_id ||
+    (userId && userId.trim() !== '' ? userId.trim() : null);
+
   const payload: Record<string, unknown> = {
     ...updateData,
     version:    body.version,
     updated_at: new Date().toISOString(),
   };
+
+  // Persistir user_id se estava nulo e agora sabemos quem fez a mudança
+  if (!prev.user_id && resolvedUserId) {
+    payload.user_id = resolvedUserId;
+  }
 
   const { data: order, error } = await admin
     .from('orders')
@@ -78,19 +93,14 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
 
   if (error) {
     const message = String(error.message || '');
-    const status = message.includes('Order version mismatch') ? 409 : 500;
+    const status  = message.includes('Order version mismatch') ? 409 : 500;
     return NextResponse.json({ error: error.message }, { status });
   }
 
-  const transitionToPago =
-    prev.status !== 'pago' && order.status === 'pago';
+  const transitionToPago = prev.status !== 'pago' && order.status === 'pago';
 
-  // --- Comissão de indicador (referral) ---
-  if (
-    transitionToPago &&
-    order.referral_id &&
-    Number(order.commission_value) > 0
-  ) {
+  // ── Comissão de indicador ─────────────────────────────────────────────
+  if (transitionToPago && order.referral_id && Number(order.commission_value) > 0) {
     const { count } = await admin
       .from('commissions')
       .select('*', { count: 'exact', head: true })
@@ -99,7 +109,6 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
 
     if (!count || count === 0) {
       await generateCommission(admin, order, Number(order.commission_value));
-
       await auditLog(
         '[COMISSÃO] Gerada automaticamente',
         { order_id: params.id, amount: order.commission_value, workspace },
@@ -108,33 +117,57 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     }
   }
 
-  // --- Comissões de representante (rep_commissions) ---
-  if (transitionToPago && order.user_id) {
+  // ── Comissões de representante ─────────────────────────────────────────
+  // Usar resolvedUserId (pode ser o user_id existente OU o userId do request)
+  if (transitionToPago && resolvedUserId) {
     const { data: items } = await admin
       .from('order_items')
       .select('id,product_id,product_name,quantity,unit_price,total,rep_commission_pct')
       .eq('order_id', params.id);
 
     if (items && items.length > 0) {
-      const { created, skipped } = await generateRepCommissions(
-        admin,
-        order,
-        items
-      );
+      // Passar order com o user_id resolvido (pode ter sido preenchido agora)
+      const orderForRep = { ...order, user_id: resolvedUserId };
+      const repResult   = await generateRepCommissions(admin, orderForRep, items);
 
-      if (created > 0) {
+      if (repResult.created > 0) {
         await auditLog(
-          '[COMISSÃO REP] Geradas automaticamente',
-          { order_id: params.id, created, skipped, workspace },
+          '[COMISSÃO REP] Geradas automaticamente (PUT)',
+          {
+            order_id: params.id,
+            workspace,
+            ...repResult,
+          },
+          userId
+        );
+      } else {
+        await auditLog(
+          '[COMISSÃO REP] PUT processado — sem novas comissões',
+          {
+            order_id: params.id,
+            workspace,
+            ...repResult,
+          },
           userId
         );
       }
     }
+  } else if (transitionToPago && !resolvedUserId) {
+    await auditLog(
+      '[COMISSÃO REP] Ignorado no PUT — user_id não disponível',
+      { order_id: params.id, workspace }
+    );
   }
 
   await auditLog(
     '[VENDA] Pedido atualizado',
-    { order_id: params.id, status: order.status, workspace, version: order.version },
+    {
+      order_id:          params.id,
+      status:            order.status,
+      workspace,
+      version:           order.version,
+      user_id_resolved:  resolvedUserId,
+    },
     userId
   );
 

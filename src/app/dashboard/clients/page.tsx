@@ -89,6 +89,52 @@ export default function ClientsPage() {
     await load();
   };
 
+  // ── Busca de endereço via proxy /api/geocode ──────────────────────────
+  // Usa proxy server-side em vez de chamar Nominatim diretamente do browser,
+  // evitando problemas de CORS e garantindo User-Agent correto.
+  const geoSearch = async (query: string) => {
+    if (!query || query.trim().length < 3) {
+      setGeoError('Digite ao menos 3 caracteres para buscar.');
+      return;
+    }
+    setGeoLoading(true);
+    setGeoError('');
+    try {
+      const params = new URLSearchParams({ q: query.trim(), limit: '1' });
+      const r = await apiFetch(`/api/geocode?${params.toString()}`);
+      const data = await r.json();
+
+      if (!r.ok) {
+        setGeoError(data.error || 'Erro ao buscar endereço.');
+        return;
+      }
+
+      if (!Array.isArray(data) || data.length === 0) {
+        setGeoError('Endereço não encontrado. Tente ser mais específico.');
+        return;
+      }
+
+      const result = data[0];
+      const lat = parseFloat(result.lat);
+      const lng = parseFloat(result.lon);
+      const addr = result.address || {};
+
+      setForm(prev => ({
+        ...prev,
+        lat,
+        lng,
+        maps_link: `https://www.google.com/maps?q=${lat},${lng}`,
+        city:    addr.city || addr.town || addr.village || addr.municipality || prev.city || '',
+        state:   addr.state || prev.state || '',
+        address: addr.road || prev.address || '',
+      }));
+    } catch {
+      setGeoError('Falha na comunicação com o servidor. Tente novamente.');
+    } finally {
+      setGeoLoading(false);
+    }
+  };
+
   const filtered=clients.filter(c=>{
     const ms=c.name.toLowerCase().includes(search.toLowerCase())||c.tel?.includes(search)||c.city?.toLowerCase().includes(search.toLowerCase());
     return ms&&(filterStatus==='todos'||c.status===filterStatus);
@@ -183,7 +229,7 @@ export default function ClientsPage() {
                   <input value={form.email??''} onChange={e=>f('email',e.target.value)} type="email"
                     className="w-full bg-dark-900 border border-dark-700 rounded-lg px-3 py-2 text-white text-sm outline-none focus:ring-2 focus:ring-primary-500"/></div>
 
-                {/* CEP com busca automática */}
+                {/* CEP */}
                 <div><label className="block text-xs text-dark-400 mb-1">CEP</label>
                   <div className="flex gap-2">
                     <input value={form.zip_code??''} onChange={e=>f('zip_code',e.target.value)} placeholder="88900-000"
@@ -201,38 +247,29 @@ export default function ClientsPage() {
                 <div><label className="block text-xs text-dark-400 mb-1">Cidade</label>
                   <input value={form.city??''} onChange={e=>f('city',e.target.value)}
                     className="w-full bg-dark-900 border border-dark-700 rounded-lg px-3 py-2 text-white text-sm outline-none focus:ring-2 focus:ring-primary-500"/></div>
+
+                {/* Busca de localização — proxy /api/geocode */}
                 <div className="sm:col-span-2">
-                  <label className="block text-xs text-dark-400 mb-1">Buscar Endereço no Mapa <span className="text-dark-500">(Nominatim)</span></label>
+                  <label className="block text-xs text-dark-400 mb-1">
+                    Buscar Endereço no Mapa <span className="text-dark-500">(Nominatim via proxy)</span>
+                  </label>
                   <div className="flex gap-2">
-                    <input id="geo-search-input" placeholder="Ex: Araranguá SC, Rua XV de Novembro 100..."
+                    <input
+                      id="geo-search-input"
+                      placeholder="Ex: Araranguá SC, Rua XV de Novembro 100..."
                       className="flex-1 bg-dark-900 border border-dark-700 rounded-lg px-3 py-2 text-white text-sm outline-none focus:ring-2 focus:ring-primary-500"
-                      onKeyDown={(e)=>{if(e.key==='Enter'){e.preventDefault();(document.getElementById('geo-search-btn') as HTMLButtonElement)?.click();}}}
+                      onKeyDown={(e)=>{
+                        if(e.key==='Enter'){
+                          e.preventDefault();
+                          geoSearch((e.target as HTMLInputElement).value);
+                        }
+                      }}
                     />
-                    <button id="geo-search-btn" type="button"
-                      onClick={async()=>{
-                        const q=(document.getElementById('geo-search-input') as HTMLInputElement)?.value?.trim();
-                        if(!q||q.length<3)return;
-                        setGeoLoading(true);
-                        try{
-                          const res=await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&limit=1&addressdetails=1`,{headers:{'Accept-Language':'pt-BR,pt'}});
-                          const data=await res.json();
-                          if(data.length>0){
-                            const r=data[0];
-                            const lat=parseFloat(r.lat),lng=parseFloat(r.lon);
-                            const a=r.address||{};
-                            const city=a.city||a.town||a.village||a.municipality||'';
-                            const state=a.state||'';
-                            const road=a.road||'';
-                            setForm(prev=>({...prev,
-                              lat,lng,
-                              maps_link:`https://www.google.com/maps?q=${lat},${lng}`,
-                              city:city||prev.city,
-                              state:state||prev.state,
-                              address:road||prev.address,
-                            }));
-                          }else{setGeoError('Endereço não encontrado. Tente ser mais específico.');}
-                        }catch{setGeoError('Erro ao buscar endereço.');}
-                        finally{setGeoLoading(false);}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const q = (document.getElementById('geo-search-input') as HTMLInputElement)?.value ?? '';
+                        geoSearch(q);
                       }}
                       disabled={geoLoading}
                       className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium disabled:opacity-50 whitespace-nowrap">
@@ -241,12 +278,14 @@ export default function ClientsPage() {
                   </div>
                   {geoError&&<p className="text-red-400 text-xs mt-1">{geoError}</p>}
                   {form.lat&&form.lng&&(
-                    <p className="text-green-400 text-xs mt-1">✅ Coordenadas: {form.lat?.toFixed(5)}, {form.lng?.toFixed(5)}
+                    <p className="text-green-400 text-xs mt-1">
+                      ✅ Coordenadas: {(form.lat as number).toFixed(5)}, {(form.lng as number).toFixed(5)}
                       <a href={`https://www.google.com/maps?q=${form.lat},${form.lng}`} target="_blank" rel="noopener noreferrer"
                         className="ml-2 underline text-blue-400">Abrir no Maps</a>
                     </p>
                   )}
                 </div>
+
                 <div><label className="block text-xs text-dark-400 mb-1">Link Google Maps</label>
                   <input value={form.maps_link??''} onChange={e=>f('maps_link',e.target.value)} placeholder="https://maps.google.com/..."
                     className="w-full bg-dark-900 border border-dark-700 rounded-lg px-3 py-2 text-white text-sm outline-none focus:ring-2 focus:ring-primary-500"/></div>

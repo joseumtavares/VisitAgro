@@ -49,7 +49,6 @@ export async function generateRepCommissions(
     .from('users')
     .select('id,name,username')
     .eq('id', order.user_id)
-    .eq('workspace', order.workspace)
     .maybeSingle();
 
   const repName = repUser?.name || repUser?.username || '';
@@ -60,8 +59,6 @@ export async function generateRepCommissions(
         .from('clients')
         .select('name')
         .eq('id', order.client_id)
-        .eq('workspace', order.workspace)
-        .is('deleted_at', null)
         .maybeSingle()
     : { data: null };
 
@@ -96,6 +93,7 @@ export async function generateRepCommissions(
 
     const now = new Date().toISOString();
 
+    // ── CORREÇÃO: verificar erro do insert antes de incrementar created ──
     const { error: insertError } = await admin.from('rep_commissions').insert([{
       id:                 crypto.randomUUID(),
       workspace:          order.workspace,

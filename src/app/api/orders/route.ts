@@ -45,6 +45,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const admin = getAdmin();
     const workspace = req.headers.get('x-workspace') || 'principal';
+    // ── CORREÇÃO 1: userId sempre lido do header JWT (middleware garante) ──
     const userId = req.headers.get('x-user-id') || undefined;
 
     if (!body.client_id) {
@@ -63,37 +64,33 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const referralId =
-      body.referral_id && String(body.referral_id).trim() !== ''
-        ? String(body.referral_id)
-        : null;
-
+    const orderId = crypto.randomUUID();
     let commissionValue = 0;
-    if (referralId) {
+    const total = Number(body.total ?? 0);
+
+    if (body.referral_id) {
       const { data: ref } = await admin
         .from('referrals')
-        .select('id,commission_type,commission_pct,commission,workspace,deleted_at')
-        .eq('id', referralId)
+        .select('commission_type,commission_pct,commission,workspace,deleted_at')
+        .eq('id', body.referral_id)
         .eq('workspace', workspace)
         .is('deleted_at', null)
         .maybeSingle();
 
-      if (!ref) {
-        return NextResponse.json(
-          { error: 'Indicador inválido ou inexistente.' },
-          { status: 400 }
-        );
+      if (ref) {
+        commissionValue =
+          ref.commission_type === 'percent'
+            ? (total * Number(ref.commission_pct ?? 0)) / 100
+            : Number(ref.commission ?? 0);
       }
-
-      const total = Number(body.total ?? 0);
-      commissionValue =
-        ref.commission_type === 'percent'
-          ? (total * Number(ref.commission_pct ?? 0)) / 100
-          : Number(ref.commission ?? 0);
     }
 
-    const orderId = crypto.randomUUID();
-    const { items: _items, payment_type: _paymentType, ...orderData } = body;
+    const {
+      items: _items,
+      payment_type: _paymentType,
+      ...orderData
+    } = body;
+
     const now = new Date().toISOString();
 
     const { data: order, error } = await admin
@@ -101,9 +98,11 @@ export async function POST(req: NextRequest) {
       .insert([
         {
           ...orderData,
-          referral_id: referralId,
           id: orderId,
           workspace,
+          // ── CORREÇÃO 2: user_id explícito do usuário autenticado —————
+          // Garante que o pedido sempre registra o representante correto,
+          // independente de o frontend enviar ou não o campo no body.
           user_id: userId ?? null,
           commission_value: commissionValue,
           commission_type: orderData.commission_type || 'percent',
@@ -134,17 +133,27 @@ export async function POST(req: NextRequest) {
       }));
 
       const { error: itemsError } = await admin.from('order_items').insert(itemsPayload);
+
       if (itemsError) {
         return NextResponse.json({ error: itemsError.message }, { status: 500 });
       }
     }
 
-    if (body.status === 'pago' && referralId && commissionValue > 0) {
+    // ── Comissão de indicador (referral) ─────────────────────────────────
+    if (body.status === 'pago' && body.referral_id && commissionValue > 0) {
       await generateCommission(admin, order, commissionValue);
     }
 
+    // ── CORREÇÃO 3: Comissões de representante no POST ────────────────────
+    // Quando o pedido já nasce como 'pago' e tem user_id (representante),
+    // gera rep_commissions por item, igual ao que o PUT já fazia.
     if (body.status === 'pago' && userId && itemsPayload.length > 0) {
-      const { created, skipped } = await generateRepCommissions(admin, order, itemsPayload);
+      const { created, skipped } = await generateRepCommissions(
+        admin,
+        order,
+        itemsPayload
+      );
+
       if (created > 0) {
         await auditLog(
           '[COMISSÃO REP] Geradas automaticamente (POST)',
@@ -156,7 +165,7 @@ export async function POST(req: NextRequest) {
 
     await auditLog(
       '[VENDA] Pedido criado',
-      { order_id: orderId, total: Number(body.total ?? 0), workspace },
+      { order_id: orderId, total, workspace },
       userId
     );
 

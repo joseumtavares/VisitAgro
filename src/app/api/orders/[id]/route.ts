@@ -42,10 +42,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
 
   const { data: prev, error: prevError } = await admin
     .from('orders')
-    .select(
-      'id,status,referral_id,commission_value,total,client_id,date,' +
-      'commission_type,workspace,version,deleted_at,user_id'
-    )
+    .select('id,status,referral_id,commission_value,total,client_id,date,commission_type,workspace,version,deleted_at,user_id')
     .eq('id', params.id)
     .eq('workspace', workspace)
     .is('deleted_at', null)

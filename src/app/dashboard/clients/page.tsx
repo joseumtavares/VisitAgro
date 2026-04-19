@@ -12,11 +12,6 @@ const GpsPickerMap = dynamic(
 );
 import LeafletProvider from '@/components/map/LeafletProvider';
 
-const GpsPickerMap = dynamic(
-  () => import('@/components/map/GpsPickerMap'),
-  { ssr: false }
-);
-
 type ClientStatus = 'interessado'|'visitado'|'agendado'|'comprou'|'naointeressado'|'retornar'|'outro';
 interface Client {
   id:string; name:string; status:ClientStatus; category?:string|null;
@@ -320,7 +315,7 @@ export default function ClientsPage() {
                           </div>
                           {/* Botões do card */}
                           <div className="flex items-center gap-1.5 flex-shrink-0">
-                            
+                            <a
                               href={form.maps_link ?? `https://www.google.com/maps?q=${form.lat},${form.lng}`}
                               target="_blank"
                               rel="noopener noreferrer"

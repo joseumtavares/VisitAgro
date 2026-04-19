@@ -1,0 +1,117 @@
+# L033 — ETAPA 04 — SÍNTESE
+
+**Lote:** L033  
+**Título:** Branding Fortsul + VisitAgro — Fase 1 — integração estática mínima  
+**Data da síntese:** 2026-04-19  
+**Status:** LIBERADO PARA EXECUÇÃO FINAL
+
+---
+
+## Resumo executivo
+
+A síntese final do lote L033 consolidou ETAPA 01, ETAPA 02 e ETAPA 03, adotando a auditoria como fonte decisória final em caso de conflito. O lote permanece estritamente visual, sem impacto em API, banco, autenticação, store, migrations ou SQL.
+
+A ETAPA 03 confirmou que os quatro pontos de integração aprovados da ETAPA 01 são válidos e de baixo risco:
+- `src/app/layout.tsx`
+- `src/app/auth/login/page.tsx`
+- `src/components/layout/DashboardShell.tsx`
+- `src/app/dashboard/page.tsx`
+- além da cópia dos assets para `public/branding/`
+
+A única correção obrigatória consolidada é:
+- preservar o subtítulo **“Acesse sua conta”** na tela de login.
+
+---
+
+## Correções obrigatórias consolidadas
+
+1. Executar o escopo aprovado da ETAPA 01:
+   - copiar os 5 assets de `icons/` para `public/branding/`;
+   - ajustar metadata em `src/app/layout.tsx`;
+   - aplicar branding da sidebar em `src/components/layout/DashboardShell.tsx`;
+   - inserir badge no topo de `src/app/dashboard/page.tsx`.
+
+2. Em `src/app/auth/login/page.tsx`:
+   - substituir o branding visual do ícone atual pela logo de login;
+   - **preservar obrigatoriamente** o subtítulo `Acesse sua conta`;
+   - não remover a hierarquia textual do cabeçalho do login.
+
+3. Atualizar a documentação de fechamento:
+   - `docs/index.md`
+   - `docs/changelog.md` na versão corrente **`[0.9.4]`**
+   - sem `docs/patches/`, pois não há SQL neste lote.
+
+---
+
+## Melhorias opcionais aprovadas
+
+Aplicar apenas se não ampliarem escopo e não exigirem reescrita ampla:
+
+- usar redação neutra para a instrução de cópia dos assets;
+- anexar evidência de validação (`npm run lint`, `npm run build` e checagem visual);
+- explicitar no changelog o registro em `[0.9.4]`.
+
+---
+
+## Itens descartados
+
+Não executar:
+
+- exigir “entrega adicional” dos assets além da cópia de `icons/` para `public/branding/`;
+- usar `0.9.5` como versão obrigatória do changelog;
+- transformar “comandos neutros” em obrigação;
+- implementar `logo_url` dinâmico por empresa;
+- criar `manifest.json`;
+- alterar `next.config.js` sem necessidade estrita.
+
+---
+
+## Preservação obrigatória
+
+Preservar integralmente:
+
+- lógica do login (`fetch`, `loading`, `error`, `login`, `router.push`);
+- `NAV_ITEMS` e o uso de `Map` no item `/dashboard/map`;
+- nome do usuário na sidebar;
+- cabeçalho, botão “Sair”, cards e mapa rápido do dashboard;
+- `middleware.ts`;
+- `src/lib/supabaseAdmin.ts`;
+- `src/lib/auth.ts`;
+- `src/lib/apiFetch.ts`;
+- `src/store/authStore.ts`;
+- `src/types/index.ts`;
+- `src/app/api/**`;
+- `sql/**`;
+- banco, migrations e contratos API.
+
+Aplicar somente diff mínimo e cirúrgico.
+
+---
+
+## Validação mínima obrigatória
+
+1. Confirmar presença dos 5 assets em `public/branding/`.
+2. Executar `npm run lint`.
+3. Executar `npm run build`.
+4. Testar `/auth/login` com logo e subtítulo preservado.
+5. Testar shell autenticado com logo, nome do usuário e item `Mapa`.
+6. Testar `/dashboard` com badge acima dos KPIs.
+7. Validar favicon e apple-touch-icon.
+
+---
+
+## Handoff final ao executor
+
+Executar o plano da ETAPA 01, corrigido pela ressalva única da ETAPA 03:
+- manter o subtítulo `Acesse sua conta` no login;
+- manter todo o restante do lote como aprovado;
+- fechar documentação e validações sem ampliar escopo.
+
+---
+
+## Critério de pronto desta etapa
+
+Esta síntese estará concluída quando:
+- o executor receber o prompt consolidado;
+- o lote seguir sem pendências abertas;
+- permanecer caracterizado como patch visual de baixo risco.

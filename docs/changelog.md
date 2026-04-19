@@ -3,6 +3,14 @@
 > Histórico organizado de mudanças relevantes do VisitAgro.
 
 ---
+## [0.9.5] — 18/04/2026
+
+### 🗺️ Nova funcionalidade
+- Cadastro de clientes: botão para selecionar/ajustar localização no mapa
+- Reutiliza GpsPickerMap existente — GPS automático, clique no mapa, marcador arrastável
+- Card visual de localização com coordenadas, link Google Maps, botões Copiar e Editar
+- Fluxos anteriores (CEP, Nominatim, campos manuais) 100% preservados
+
 
 ## [0.9.4] — 14/04/2026
 

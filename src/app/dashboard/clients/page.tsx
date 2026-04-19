@@ -3,8 +3,19 @@ import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/authStore';
 import DashboardShell from '@/components/layout/DashboardShell';
-import { Plus, Search, Pencil, Trash2, Phone, Mail, MapPin, ExternalLink } from 'lucide-react';
+import { Plus, Search, Pencil, Trash2, Phone, Mail, MapPin, ExternalLink, Navigation, Copy, CheckCircle } from 'lucide-react';
 import { apiFetch } from '@/lib/apiFetch';
+import dynamic from 'next/dynamic';
+const GpsPickerMap = dynamic(
+  () => import('@/components/map/GpsPickerMap'),
+  { ssr: false }
+);
+import LeafletProvider from '@/components/map/LeafletProvider';
+
+const GpsPickerMap = dynamic(
+  () => import('@/components/map/GpsPickerMap'),
+  { ssr: false }
+);
 
 type ClientStatus = 'interessado'|'visitado'|'agendado'|'comprou'|'naointeressado'|'retornar'|'outro';
 interface Client {
@@ -44,6 +55,9 @@ export default function ClientsPage() {
   const [cepLoading,setCepLoading]=useState(false);
   const [geoLoading,setGeoLoading]=useState(false);
   const [geoError,setGeoError]=useState('');
+  // ── NOVO: modal do mapa picker ────────────────────────────
+  const [showMapPicker, setShowMapPicker] = useState(false);
+  const [copiedCoords, setCopiedCoords] = useState(false);
 
   useEffect(()=>{if (!hydrated) return; if(!isAuthenticated)router.push('/auth/login');},[isAuthenticated,router]);
 
@@ -89,49 +103,23 @@ export default function ClientsPage() {
     await load();
   };
 
-  // ── Busca de endereço via proxy /api/geocode ──────────────────────────
-  // Usa proxy server-side em vez de chamar Nominatim diretamente do browser,
-  // evitando problemas de CORS e garantindo User-Agent correto.
-  const geoSearch = async (query: string) => {
-    if (!query || query.trim().length < 3) {
-      setGeoError('Digite ao menos 3 caracteres para buscar.');
-      return;
-    }
-    setGeoLoading(true);
-    setGeoError('');
+  // ── Confirma localização vinda do GpsPickerMap ────────────
+  const handleMapConfirm = (lat: number, lng: number) => {
+    const maps_link = `https://www.google.com/maps?q=${lat.toFixed(6)},${lng.toFixed(6)}`;
+    setForm(f => ({ ...f, lat, lng, maps_link }));
+    setShowMapPicker(false);
+  };
+
+  // ── Copia coordenadas pro clipboard ───────────────────────
+  const copyCoords = async () => {
+    if (!form.lat || !form.lng) return;
+    const text = `${(form.lat as number).toFixed(6)}, ${(form.lng as number).toFixed(6)}`;
     try {
-      const params = new URLSearchParams({ q: query.trim(), limit: '1' });
-      const r = await apiFetch(`/api/geocode?${params.toString()}`);
-      const data = await r.json();
-
-      if (!r.ok) {
-        setGeoError(data.error || 'Erro ao buscar endereço.');
-        return;
-      }
-
-      if (!Array.isArray(data) || data.length === 0) {
-        setGeoError('Endereço não encontrado. Tente ser mais específico.');
-        return;
-      }
-
-      const result = data[0];
-      const lat = parseFloat(result.lat);
-      const lng = parseFloat(result.lon);
-      const addr = result.address || {};
-
-      setForm(prev => ({
-        ...prev,
-        lat,
-        lng,
-        maps_link: `https://www.google.com/maps?q=${lat},${lng}`,
-        city:    addr.city || addr.town || addr.village || addr.municipality || prev.city || '',
-        state:   addr.state || prev.state || '',
-        address: addr.road || prev.address || '',
-      }));
+      await navigator.clipboard.writeText(text);
+      setCopiedCoords(true);
+      setTimeout(() => setCopiedCoords(false), 2000);
     } catch {
-      setGeoError('Falha na comunicação com o servidor. Tente novamente.');
-    } finally {
-      setGeoLoading(false);
+      // fallback silencioso
     }
   };
 
@@ -198,6 +186,7 @@ export default function ClientsPage() {
           </div>}
       </div>
 
+      {/* ── MODAL DE CADASTRO/EDIÇÃO ── */}
       {showModal&&(
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
           <div className="bg-dark-800 rounded-xl border border-dark-700 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -229,7 +218,7 @@ export default function ClientsPage() {
                   <input value={form.email??''} onChange={e=>f('email',e.target.value)} type="email"
                     className="w-full bg-dark-900 border border-dark-700 rounded-lg px-3 py-2 text-white text-sm outline-none focus:ring-2 focus:ring-primary-500"/></div>
 
-                {/* CEP */}
+                {/* CEP com busca automática */}
                 <div><label className="block text-xs text-dark-400 mb-1">CEP</label>
                   <div className="flex gap-2">
                     <input value={form.zip_code??''} onChange={e=>f('zip_code',e.target.value)} placeholder="88900-000"
@@ -248,53 +237,145 @@ export default function ClientsPage() {
                   <input value={form.city??''} onChange={e=>f('city',e.target.value)}
                     className="w-full bg-dark-900 border border-dark-700 rounded-lg px-3 py-2 text-white text-sm outline-none focus:ring-2 focus:ring-primary-500"/></div>
 
-                {/* Busca de localização — proxy /api/geocode */}
+                {/* ── SEÇÃO DE LOCALIZAÇÃO ────────────────────────────── */}
                 <div className="sm:col-span-2">
-                  <label className="block text-xs text-dark-400 mb-1">
-                    Buscar Endereço no Mapa <span className="text-dark-500">(Nominatim via proxy)</span>
-                  </label>
-                  <div className="flex gap-2">
-                    <input
-                      id="geo-search-input"
-                      placeholder="Ex: Araranguá SC, Rua XV de Novembro 100..."
-                      className="flex-1 bg-dark-900 border border-dark-700 rounded-lg px-3 py-2 text-white text-sm outline-none focus:ring-2 focus:ring-primary-500"
-                      onKeyDown={(e)=>{
-                        if(e.key==='Enter'){
-                          e.preventDefault();
-                          geoSearch((e.target as HTMLInputElement).value);
-                        }
-                      }}
-                    />
+                  <div className="border-t border-dark-700 pt-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <label className="text-xs text-dark-400 font-semibold uppercase tracking-wide">
+                        📍 Localização no Mapa
+                      </label>
+                    </div>
+
+                    {/* Busca por endereço (Nominatim) — preservada do fluxo original */}
+                    <div className="mb-3">
+                      <label className="block text-xs text-dark-400 mb-1">
+                        Buscar Endereço no Mapa <span className="text-dark-500">(Nominatim)</span>
+                      </label>
+                      <div className="flex gap-2">
+                        <input id="geo-search-input" placeholder="Ex: Araranguá SC, Rua XV de Novembro 100..."
+                          className="flex-1 bg-dark-900 border border-dark-700 rounded-lg px-3 py-2 text-white text-sm outline-none focus:ring-2 focus:ring-primary-500"
+                          onKeyDown={(e)=>{if(e.key==='Enter'){e.preventDefault();(document.getElementById('geo-search-btn') as HTMLButtonElement)?.click();}}}
+                        />
+                        <button id="geo-search-btn" type="button"
+                          onClick={async()=>{
+                            const q=(document.getElementById('geo-search-input') as HTMLInputElement)?.value?.trim();
+                            if(!q||q.length<3)return;
+                            setGeoLoading(true);
+                            try{
+                              const res=await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&limit=1&addressdetails=1`,{headers:{'Accept-Language':'pt-BR,pt'}});
+                              const data=await res.json();
+                              if(data.length>0){
+                                const r=data[0];
+                                const lat=parseFloat(r.lat),lng=parseFloat(r.lon);
+                                const a=r.address||{};
+                                const city=a.city||a.town||a.village||a.municipality||'';
+                                const state=a.state||'';
+                                const road=a.road||'';
+                                setForm(prev=>({...prev,
+                                  lat,lng,
+                                  maps_link:`https://www.google.com/maps?q=${lat},${lng}`,
+                                  city:city||prev.city,
+                                  state:state||prev.state,
+                                  address:road||prev.address,
+                                }));
+                                setGeoError('');
+                              }else{setGeoError('Endereço não encontrado. Tente ser mais específico.');}
+                            }catch{setGeoError('Erro ao buscar endereço.');}
+                            finally{setGeoLoading(false);}
+                          }}
+                          disabled={geoLoading}
+                          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium disabled:opacity-50 whitespace-nowrap">
+                          {geoLoading?'⏳':'📍 Buscar'}
+                        </button>
+                      </div>
+                      {geoError&&<p className="text-red-400 text-xs mt-1">{geoError}</p>}
+                    </div>
+
+                    {/* ── NOVO: Botão para abrir o mapa picker ── */}
                     <button
                       type="button"
-                      onClick={() => {
-                        const q = (document.getElementById('geo-search-input') as HTMLInputElement)?.value ?? '';
-                        geoSearch(q);
-                      }}
-                      disabled={geoLoading}
-                      className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium disabled:opacity-50 whitespace-nowrap">
-                      {geoLoading?'⏳':'📍 Buscar'}
+                      onClick={() => setShowMapPicker(true)}
+                      className="w-full flex items-center justify-center gap-2 bg-dark-700 hover:bg-dark-600 border border-dark-600 hover:border-primary-500 text-white px-4 py-3 rounded-lg text-sm font-medium transition-all group"
+                    >
+                      <MapPin className="w-4 h-4 text-primary-400 group-hover:scale-110 transition-transform" />
+                      {form.lat && form.lng
+                        ? '✏️ Ajustar localização no mapa'
+                        : '🗺️ Selecionar localização no mapa'}
                     </button>
+
+                    {/* ── NOVO: Card de localização confirmada ── */}
+                    {form.lat && form.lng && (
+                      <div className="mt-3 bg-dark-900 border border-green-500/30 rounded-lg p-4">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <div className="w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center flex-shrink-0">
+                              <MapPin className="w-4 h-4 text-green-400" />
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-xs text-green-400 font-medium mb-0.5">Localização definida</p>
+                              <p className="text-xs text-dark-300 font-mono truncate">
+                                {(form.lat as number).toFixed(5)}, {(form.lng as number).toFixed(5)}
+                              </p>
+                            </div>
+                          </div>
+                          {/* Botões do card */}
+                          <div className="flex items-center gap-1.5 flex-shrink-0">
+                            
+                              href={form.maps_link ?? `https://www.google.com/maps?q=${form.lat},${form.lng}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              title="Abrir no Google Maps"
+                              className="flex items-center gap-1 px-2.5 py-1.5 bg-blue-600/20 hover:bg-blue-600/40 border border-blue-500/30 text-blue-400 rounded-lg text-xs transition-colors"
+                            >
+                              <ExternalLink className="w-3 h-3" />
+                              Maps
+                            </a>
+                            <button
+                              type="button"
+                              onClick={copyCoords}
+                              title="Copiar coordenadas"
+                              className="flex items-center gap-1 px-2.5 py-1.5 bg-dark-700 hover:bg-dark-600 border border-dark-600 text-dark-300 hover:text-white rounded-lg text-xs transition-colors"
+                            >
+                              {copiedCoords
+                                ? <><CheckCircle className="w-3 h-3 text-green-400" /><span className="text-green-400">Copiado</span></>
+                                : <><Copy className="w-3 h-3" />Copiar</>
+                              }
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setShowMapPicker(true)}
+                              title="Editar localização"
+                              className="flex items-center gap-1 px-2.5 py-1.5 bg-dark-700 hover:bg-dark-600 border border-dark-600 text-dark-300 hover:text-white rounded-lg text-xs transition-colors"
+                            >
+                              <Pencil className="w-3 h-3" />
+                              Editar
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Campos manuais de lat/lng/maps_link — preservados do original */}
+                    <div className="grid grid-cols-2 gap-3 mt-3">
+                      <div>
+                        <label className="block text-xs text-dark-400 mb-1">Latitude</label>
+                        <input value={form.lat??''} onChange={e=>f('lat',parseFloat(e.target.value)||null)} type="number" step="any" placeholder="-28.935"
+                          className="w-full bg-dark-900 border border-dark-700 rounded-lg px-3 py-2 text-white text-sm outline-none focus:ring-2 focus:ring-primary-500"/>
+                      </div>
+                      <div>
+                        <label className="block text-xs text-dark-400 mb-1">Longitude</label>
+                        <input value={form.lng??''} onChange={e=>f('lng',parseFloat(e.target.value)||null)} type="number" step="any" placeholder="-49.486"
+                          className="w-full bg-dark-900 border border-dark-700 rounded-lg px-3 py-2 text-white text-sm outline-none focus:ring-2 focus:ring-primary-500"/>
+                      </div>
+                    </div>
+                    <div className="mt-3">
+                      <label className="block text-xs text-dark-400 mb-1">Link Google Maps</label>
+                      <input value={form.maps_link??''} onChange={e=>f('maps_link',e.target.value)} placeholder="https://maps.google.com/..."
+                        className="w-full bg-dark-900 border border-dark-700 rounded-lg px-3 py-2 text-white text-sm outline-none focus:ring-2 focus:ring-primary-500"/>
+                    </div>
                   </div>
-                  {geoError&&<p className="text-red-400 text-xs mt-1">{geoError}</p>}
-                  {form.lat&&form.lng&&(
-                    <p className="text-green-400 text-xs mt-1">
-                      ✅ Coordenadas: {(form.lat as number).toFixed(5)}, {(form.lng as number).toFixed(5)}
-                      <a href={`https://www.google.com/maps?q=${form.lat},${form.lng}`} target="_blank" rel="noopener noreferrer"
-                        className="ml-2 underline text-blue-400">Abrir no Maps</a>
-                    </p>
-                  )}
                 </div>
 
-                <div><label className="block text-xs text-dark-400 mb-1">Link Google Maps</label>
-                  <input value={form.maps_link??''} onChange={e=>f('maps_link',e.target.value)} placeholder="https://maps.google.com/..."
-                    className="w-full bg-dark-900 border border-dark-700 rounded-lg px-3 py-2 text-white text-sm outline-none focus:ring-2 focus:ring-primary-500"/></div>
-                <div><label className="block text-xs text-dark-400 mb-1">Latitude</label>
-                  <input value={form.lat??''} onChange={e=>f('lat',parseFloat(e.target.value)||null)} type="number" step="any" placeholder="-28.935"
-                    className="w-full bg-dark-900 border border-dark-700 rounded-lg px-3 py-2 text-white text-sm outline-none focus:ring-2 focus:ring-primary-500"/></div>
-                <div><label className="block text-xs text-dark-400 mb-1">Longitude</label>
-                  <input value={form.lng??''} onChange={e=>f('lng',parseFloat(e.target.value)||null)} type="number" step="any" placeholder="-49.486"
-                    className="w-full bg-dark-900 border border-dark-700 rounded-lg px-3 py-2 text-white text-sm outline-none focus:ring-2 focus:ring-primary-500"/></div>
                 <div className="sm:col-span-2"><label className="block text-xs text-dark-400 mb-1">Observações</label>
                   <textarea value={form.obs??''} onChange={e=>f('obs',e.target.value)} rows={3}
                     className="w-full bg-dark-900 border border-dark-700 rounded-lg px-3 py-2 text-white text-sm outline-none focus:ring-2 focus:ring-primary-500 resize-none"/></div>
@@ -306,6 +387,74 @@ export default function ClientsPage() {
                 className="px-6 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg text-sm font-medium disabled:opacity-50">
                 {saving?'Salvando...':editing?'Salvar alterações':'Cadastrar'}</button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── MODAL DO MAPA PICKER (fullscreen) ── */}
+      {showMapPicker && (
+        <div
+          className="fixed inset-0 z-[60] bg-dark-950"
+          style={{ display: 'flex', flexDirection: 'column' }}
+        >
+          {/* Header do modal do mapa */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '12px 16px',
+              background: '#1e293b',
+              borderBottom: '1px solid #334155',
+              flexShrink: 0,
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <MapPin style={{ width: 18, height: 18, color: '#10b981' }} />
+              <span style={{ color: '#f1f5f9', fontWeight: 600, fontSize: 15 }}>
+                Selecionar localização no mapa
+              </span>
+            </div>
+            <button
+              onClick={() => setShowMapPicker(false)}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: '#94a3b8',
+                fontSize: 20,
+                cursor: 'pointer',
+                padding: '4px 8px',
+                borderRadius: 6,
+              }}
+            >
+              ✕
+            </button>
+          </div>
+
+          {/* Instrução */}
+          <div
+            style={{
+              background: '#0f172a',
+              padding: '8px 16px',
+              fontSize: 12,
+              color: '#94a3b8',
+              borderBottom: '1px solid #1e293b',
+              flexShrink: 0,
+            }}
+          >
+            Clique no mapa ou arraste o marcador para definir a localização. Use 📡 para detectar sua posição atual.
+          </div>
+
+          {/* Mapa ocupando o restante da tela */}
+          <div style={{ flex: 1, overflow: 'hidden' }}>
+            <LeafletProvider>
+              <GpsPickerMap
+                initialLat={form.lat as number | undefined}
+                initialLng={form.lng as number | undefined}
+                onConfirm={handleMapConfirm}
+                onCancel={() => setShowMapPicker(false)}
+              />
+            </LeafletProvider>
           </div>
         </div>
       )}

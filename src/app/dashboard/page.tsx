@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/authStore';
 import DashboardShell from '@/components/layout/DashboardShell';
@@ -76,6 +77,17 @@ export default function DashboardPage() {
           <button onClick={logout} className="flex items-center gap-2 text-dark-400 hover:text-white border border-dark-700 hover:border-dark-500 px-3 py-2 rounded-lg text-sm transition-colors">
             <LogOut className="w-4 h-4"/>Sair
           </button>
+        </div>
+
+        <div className="rounded-xl border border-dark-700 bg-dark-900/70 p-4">
+          <Image
+            src="/branding/visitagro-fortsul-dashboard-badge.svg"
+            alt="Ambiente Fortsul personalizado"
+            width={360}
+            height={96}
+            className="h-auto w-auto max-w-full"
+            priority
+          />
         </div>
 
         {/* Stats grid */}

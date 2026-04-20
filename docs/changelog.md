@@ -12,6 +12,13 @@
 - Fluxos anteriores (CEP, Nominatim, campos manuais) 100% preservados
 
 
+### 🎨 Branding / UI — L033
+- metadata atualizada com `VisitAgro Pro`, favicon e apple touch icon locais
+- branding visual do login ajustado para usar logo Fortsul + VisitAgro
+- branding do cabeçalho da sidebar substituído pela logo lateral local
+- badge institucional adicionado no dashboard acima dos KPIs
+- subtítulo do login `Acesse sua conta` preservado
+
 ## [0.9.4] — 14/04/2026
 
 ### ✅ Correções críticas

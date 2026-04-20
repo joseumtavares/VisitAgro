@@ -5,8 +5,12 @@ import "../styles/globals.css";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Agrovisita Pro",
+  title: "VisitAgro Pro",
   description: "Sistema de Gestão Agrícola Escalável",
+  icons: {
+    icon: "/branding/visitagro-fortsul-favicon.png",
+    apple: "/branding/visitagro-fortsul-apple-touch-icon.png",
+  },
 };
 
 export default function RootLayout({

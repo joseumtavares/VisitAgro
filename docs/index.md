@@ -30,6 +30,8 @@ Aqui você encontra os materiais de apoio organizados de forma clara, visual e p
 
 ### 📦 Controle de Lotes
 - [📋 Convenção de Lotes](./lotes/README.md)
+- [🧩 Síntese final do lote L033](./lotes/L033_ETAPA_04_SINTESE.md)
+- [🛠️ Registro técnico do lote L033](./patches/L033.md)
 
 ---
 
@@ -81,6 +83,8 @@ Aqui você encontra os materiais de apoio organizados de forma clara, visual e p
 ### Controle de Lotes
 
 - [Convenção de Lotes](./lotes/README.md) - Padrão para registro e rastreamento de lotes
+- [Síntese final do lote L033](./lotes/L033_ETAPA_04_SINTESE.md) - Consolidação final do branding estático mínimo
+- [Registro técnico do lote L033](./patches/L033.md) - Changelog técnico consolidado do lote
 
 ---
 
@@ -106,9 +110,11 @@ docs/
 │   ├── 07_template_patch_sql.md
 │   └── 08_checklist_fechamento.md
 ├── patches/
-│   └── 020_product_components.md
+│   ├── 020_product_components.md
+│   └── L033.md
 ├── lotes/
-│   └── README.md
+│   ├── README.md
+│   └── L033_ETAPA_04_SINTESE.md
 ├── updates/
 └── handoffs/
 ```

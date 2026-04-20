@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/authStore';
@@ -58,12 +59,18 @@ export default function DashboardShell({ children }: { children: React.ReactNode
       <aside className="w-60 flex-shrink-0 bg-dark-900 border-r border-dark-800 flex flex-col">
         {/* Logo */}
         <div className="px-4 py-5 border-b border-dark-800">
-          <div className="flex items-center gap-2">
-            <Map className="w-5 h-5 text-primary-400" />
-            <span className="font-bold text-white text-sm">VisitAgro Pro</span>
+          <div className="flex items-center">
+            <Image
+              src="/branding/visitagro-fortsul-logo-sidebar.svg"
+              alt="VisitAgro Pro Fortsul"
+              width={230}
+              height={54}
+              className="h-auto w-auto max-w-full"
+              priority
+            />
           </div>
           {user && (
-            <p className="text-xs text-dark-400 mt-1 truncate">
+            <p className="text-xs text-dark-400 mt-3 truncate">
               {user.name || user.username}
             </p>
           )}

@@ -1,9 +1,10 @@
 'use client';
 
 import { useState } from 'react';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/authStore';
-import { MapPin, Lock, User } from 'lucide-react';
+import { Lock, User } from 'lucide-react';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -44,11 +45,16 @@ export default function LoginPage() {
   return (
     <main className="min-h-screen bg-dark-950 text-white flex items-center justify-center px-6">
       <div className="w-full max-w-md bg-dark-900 border border-dark-800 rounded-2xl p-8 shadow-2xl">
-        <div className="flex items-center gap-3 mb-8">
-          <div className="w-12 h-12 rounded-xl bg-primary-600/20 flex items-center justify-center">
-            <MapPin className="w-6 h-6 text-primary-400" />
-          </div>
-          <div>
+        <div className="mb-8">
+          <Image
+            src="/branding/visitagro-fortsul-logo-login.svg"
+            alt="VisitAgro Pro Fortsul"
+            width={280}
+            height={180}
+            className="h-auto w-auto max-w-full"
+            priority
+          />
+          <div className="mt-4">
             <h1 className="text-2xl font-bold">VisitAgro Pro</h1>
             <p className="text-sm text-dark-400">Acesse sua conta</p>
           </div>

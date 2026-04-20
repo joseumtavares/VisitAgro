@@ -322,6 +322,17 @@ CREATE TABLE public.rep_commissions (
   CONSTRAINT rep_commissions_workspace_fkey FOREIGN KEY (workspace) REFERENCES public.workspaces(id),
   CONSTRAINT rep_commissions_rep_id_fkey FOREIGN KEY (rep_id) REFERENCES public.users(id)
 );
+CREATE TABLE public.rep_regions (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  workspace text NOT NULL,
+  rep_id text NOT NULL,
+  state character NOT NULL,
+  city text NOT NULL,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT rep_regions_pkey PRIMARY KEY (id),
+  CONSTRAINT rep_regions_rep_id_fkey FOREIGN KEY (rep_id) REFERENCES public.users(id)
+);
 CREATE TABLE public.settings (
   id text NOT NULL DEFAULT (gen_random_uuid())::text,
   workspace text NOT NULL DEFAULT 'principal'::text UNIQUE,

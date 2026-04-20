@@ -71,68 +71,111 @@ Desenvolvido em **Next.js 14 + Supabase**, com foco em produtividade operacional
 ## 🧱 Estrutura de Diretórios
 
 ```text
-visitagropro/
+VisitAgro/
 ├── src/
 │   ├── app/
-│   │   ├── auth/login/page.tsx           ← Tela de login
+│   │   ├── auth/login/page.tsx ← Tela de login
 │   │   ├── dashboard/
-│   │   │   ├── page.tsx                  ← Dashboard com stats e mapa rápido
-│   │   │   ├── map/page.tsx              ← Mapa completo de clientes
-│   │   │   ├── clients/page.tsx          ← CRUD clientes + geocodificação
-│   │   │   ├── products/page.tsx         ← CRUD produtos + categorias
-│   │   │   ├── sales/page.tsx            ← Pedidos + itens + comissões
-│   │   │   ├── commissions/page.tsx      ← Comissões pendentes/pagas
-│   │   │   ├── referrals/page.tsx        ← Indicadores + dados bancários
-│   │   │   ├── maintenance/page.tsx      ← Reprocessamento + limpeza
-│   │   │   ├── logs/page.tsx             ← Audit log do sistema
-│   │   │   └── settings/page.tsx         ← Empresa, perfil, senha
-│   │   └── api/
-│   │       ├── auth/login/route.ts        ← POST (público)
-│   │       ├── auth/change-password/      ← POST (JWT)
-│   │       ├── clients/route.ts           ← GET/POST
-│   │       ├── clients/[id]/route.ts      ← GET/PUT/DELETE
-│   │       ├── products/route.ts          ← GET/POST
-│   │       ├── products/[id]/route.ts     ← GET/PUT/DELETE
-│   │       ├── orders/route.ts            ← GET/POST
-│   │       ├── orders/[id]/route.ts       ← GET/PUT/DELETE
-│   │       ├── commissions/route.ts       ← GET
-│   │       ├── commissions/[id]/route.ts  ← PUT (pagar)
-│   │       ├── referrals/route.ts         ← GET/POST
-│   │       ├── referrals/[id]/route.ts    ← PUT/DELETE
-│   │       ├── categories/route.ts        ← GET/POST/PUT/DELETE
-│   │       ├── cep/[cep]/route.ts         ← GET (proxy ViaCEP)
-│   │       ├── settings/route.ts          ← GET
-│   │       ├── settings/company/route.ts  ← POST
-│   │       └── admin/
-│   │           ├── cleanup/route.ts       ← POST
-│   │           ├── logs/route.ts          ← GET
-│   │           ├── pin/route.ts           ← POST
-│   │           └── reprocess/route.ts     ← POST
+│   │   │   ├── page.tsx ← Dashboard principal
+│   │   │   ├── map/page.tsx ← Mapa completo de clientes
+│   │   │   ├── clients/page.tsx ← CRUD clientes + geocodificação
+│   │   │   ├── products/page.tsx ← CRUD produtos
+│   │   │   ├── sales/page.tsx ← Pedidos + itens + comissões
+│   │   │   ├── commissions/page.tsx ← Comissões pendentes/pagas
+│   │   │   ├── rep-commissions/page.tsx ← Comissões de representantes
+│   │   │   ├── referrals/page.tsx ← Indicadores + dados bancários
+│   │   │   ├── maintenance/page.tsx ← Reprocessamento + limpeza
+│   │   │   ├── logs/page.tsx ← Audit log do sistema
+│   │   │   ├── settings/page.tsx ← Empresa, perfil, senha
+│   │   │   └── pre-registrations/
+│   │   │       ├── page.tsx ← Pré-cadastros
+│   │   │       └── pre-registrations-page.tsx ← Componente pré-cadastros
+│   │   ├── api/
+│   │   │   ├── auth/login/route.ts ← POST (público)
+│   │   │   ├── auth/change-password/route.ts ← POST (JWT)
+│   │   │   ├── clients/route.ts ← GET/POST
+│   │   │   ├── clients/[id]/route.ts ← GET/PUT/DELETE
+│   │   │   ├── products/route.ts ← GET/POST
+│   │   │   ├── products/[id]/route.ts ← GET/PUT/DELETE
+│   │   │   ├── orders/route.ts ← GET/POST
+│   │   │   ├── orders/[id]/route.ts ← GET/PUT/DELETE
+│   │   │   ├── commissions/route.ts ← GET
+│   │   │   ├── commissions/[id]/route.ts ← PUT (pagar)
+│   │   │   ├── rep-commissions/route.ts ← GET/POST (comissões rep)
+│   │   │   ├── rep-commissions/[id]/route.ts ← PUT/DELETE
+│   │   │   ├── referrals/route.ts ← GET/POST
+│   │   │   ├── referrals/[id]/route.ts ← PUT/DELETE
+│   │   │   ├── categories/route.ts ← GET/POST/PUT/DELETE
+│   │   │   ├── cep/[cep]/route.ts ← GET (proxy ViaCEP)
+│   │   │   ├── geocode/route.ts ← Geocodificação de endereços
+│   │   │   ├── health/route.ts ← Health check
+│   │   │   ├── visits/route.ts ← Registro de visitas
+│   │   │   ├── pre-registrations/route.ts ← GET/POST pré-cadastros
+│   │   │   ├── pre-registrations/[id]/route.ts ← GET/PUT/DELETE
+│   │   │   ├── pre-registrations/[id]/convert/route.ts ← Converter em cliente
+│   │   │   ├── settings/route.ts ← GET
+│   │   │   ├── settings/company/route.ts ← POST
+│   │   │   └── admin/
+│   │   │       ├── cleanup/route.ts ← POST
+│   │   │       ├── logs/route.ts ← GET
+│   │   │       ├── pin/route.ts ← POST
+│   │   │       └── reprocess/route.ts ← POST
+│   │   ├── layout.tsx ← Layout root
+│   │   └── page.tsx ← Landing page / redirect
 │   ├── components/
-│   │   ├── layout/DashboardShell.tsx      ← Sidebar + navegação
+│   │   ├── layout/DashboardShell.tsx ← Sidebar + navegação
 │   │   └── map/
-│   │       ├── InteractiveMap.tsx         ← Mapa Leaflet completo
-│   │       └── LeafletProvider.tsx        ← SSR-safe wrapper
+│   │       ├── InteractiveMap.tsx ← Mapa Leaflet completo
+│   │       ├── LeafletProvider.tsx ← SSR-safe wrapper
+│   │       └── GpsPickerMap.tsx ← Seletor GPS no mapa
 │   ├── lib/
-│   │   ├── apiFetch.ts                   ← fetch autenticado (injeta JWT)
-│   │   ├── auth.ts                       ← verifyPassword, JWT
-│   │   ├── supabase.ts                   ← cliente anon (client)
-│   │   ├── supabaseAdmin.ts              ← service_role (server-only)
-│   │   └── commissionHelper.ts           ← geração de comissões
-│   ├── store/authStore.ts                ← Zustand auth state
-│   └── types/index.ts
+│   │   ├── apiFetch.ts ← fetch autenticado (injeta JWT)
+│   │   ├── auth.ts ← verifyPassword, JWT
+│   │   ├── supabase.ts ← cliente anon (client)
+│   │   ├── supabaseAdmin.ts ← service_role (server-only)
+│   │   ├── commissionHelper.ts ← geração de comissões
+│   │   ├── repCommissionHelper.ts ← comissões de representantes
+│   │   ├── productCompositeHelper.ts ← produtos compostos
+│   │   └── requestContext.ts ← contexto de requisição
+│   ├── store/authStore.ts ← Zustand auth state
+│   ├── types/index.ts ← Tipos TypeScript
+│   └── styles/globals.css ← Estilos globais
 ├── scripts/
-│   ├── generate-password-hash.js
-│   ├── generate-hash-standalone.js
-│   └── insert_admin.sql
-├── schema_completo_v09.sql               ← Schema para projeto novo
-├── schema_fix.sql                        ← Migration para banco existente
-├── middleware.ts                         ← Proteção JWT de /api/*
+│   ├── generate-password-hash.js ← Gerar hash de senha
+│   └── generate-hash-standalone.js ← Hash standalone
+├── sql/
+│   ├── schema_atual_supabase.sql ← Schema atual do banco
+│   ├── insert_admin.sql ← Insert admin
+│   ├── 020_product_components.sql ← Migration produtos compostos
+│   └── 030_rep_commissions_rep_id.sql ← Migration comissões rep
+├── docs/
+│   ├── index.md ← Documentação principal
+│   ├── visao-geral.md ← Visão geral do projeto
+│   ├── setup-banco.md ← Setup do banco de dados
+│   ├── changelog.md ← Histórico de mudanças
+│   ├── playbook-operacional.md ← Playbook operacional
+│   ├── auditoria-tecnica.md ← Auditoria técnica
+│   ├── updates-v094.md ← Atualizações v0.9.4
+│   ├── AGENTES.md ← Documentação de agentes
+│   ├── agents/ ← Prompts e instruções de agentes
+│   ├── comunications_agents/ ← Comunicação entre agentes
+│   ├── lotes/ ← Registros de lotes de execução
+│   └── patches/ ← Documentação de patches
+├── public/
+│   └── branding/ ← Assets de marca
+├── icons/
+│   └── README-INTEGRACAO.md ← Integração de ícones
+├── middleware.ts ← Proteção JWT de /api/* e rotas
 ├── package.json
+├── package-lock.json
 ├── tailwind.config.js
+├── postcss.config.js
 ├── tsconfig.json
 ├── vercel.json
-└── .env.example
+├── .env.example
+├── .vscode/launch.json ← Configuração debug VSCode
+├── gerar_projeto.js ← Script gerador de projeto
+└── generate-hash-standalone.js ← Script hash standalone (raiz)
 ```
 
 ---

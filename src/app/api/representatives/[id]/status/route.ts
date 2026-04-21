@@ -9,14 +9,24 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const { workspace, role, userId } = getRequestContext(req);
+  import { resolveUserAccess } from '@/lib/representativeAccess';
 
-  if (role !== 'admin' && role !== 'manager') {
-    return NextResponse.json(
-      { error: 'Acesso restrito a administradores e gerentes.' },
-      { status: 403 }
-    );
-  }
+const { userId } = getRequestContext(req);
+
+const access = await resolveUserAccess(userId);
+
+if (!access.ok) {
+  return NextResponse.json({ error: access.error }, { status: 401 });
+}
+
+if (access.role !== 'admin' && access.role !== 'manager') {
+  return NextResponse.json(
+    { error: 'Acesso restrito a administradores e gerentes.' },
+    { status: 403 }
+  );
+}
+
+const workspace = access.workspace;
 
   const body = await req.json();
   const { active } = body;

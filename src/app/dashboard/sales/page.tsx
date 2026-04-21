@@ -7,6 +7,7 @@ import { Plus, Search, ShoppingCart, CheckCircle, XCircle, Clock } from 'lucide-
 import { apiFetch } from '@/lib/apiFetch';
 
 type OrderStatus='pendente'|'aprovado'|'pago'|'cancelado'|'faturado';
+
 interface Order {
   id: string;
   order_number?: number | null;
@@ -14,15 +15,18 @@ interface Order {
   status: OrderStatus;
   total: number;
   version?: number | null;
+  commission_value?: number | null;
   obs?: string | null;
   client_id?: string | null;
   referral_id?: string | null;
+  user_id?: string | null;
   clients?: { name: string } | null;
   referrals?: { name: string } | null;
 }
 interface Client{id:string;name:string;}
 interface Product{id:string;name:string;unit_price:number;rep_commission_pct:number;unit:string;}
 interface Referral{id:string;name:string;commission_type:string;commission_pct?:number;commission?:number;}
+interface Representative{id:string;name?:string;username:string;active:boolean;}
 interface OrderItem{product_id:string;product_name:string;quantity:number;unit_price:number;rep_commission_pct:number;}
 
 const STATUS_CFG:Record<OrderStatus,{label:string;cls:string;icon:any}>={
@@ -34,41 +38,66 @@ const STATUS_CFG:Record<OrderStatus,{label:string;cls:string;icon:any}>={
 };
 
 export default function SalesPage() {
-  const router=useRouter(); const {isAuthenticated}=useAuthStore();
+  const router=useRouter();
+  const { isAuthenticated, user } = useAuthStore();
+
   const [hydrated, setHydrated] = useState(false);
   useEffect(() => { setHydrated(true); }, []);
+
+  // Detectar role do usuário logado
+  const userRole = (user as any)?.role ?? 'user';
+  const isAdminOrManager = userRole === 'admin' || userRole === 'manager';
+  const isRepresentative  = userRole === 'representative';
+
   const [orders,setOrders]=useState<Order[]>([]);
   const [clients,setClients]=useState<Client[]>([]);
   const [products,setProducts]=useState<Product[]>([]);
   const [referrals,setReferrals]=useState<Referral[]>([]);
+  const [representatives,setRepresentatives]=useState<Representative[]>([]);
   const [loading,setLoading]=useState(true);
   const [search,setSearch]=useState('');
   const [filterStatus,setFilter]=useState<OrderStatus|'todos'>('todos');
   const [showModal,setShowModal]=useState(false);
   const [form, setForm] = useState({
-    client_id: '',
-    referral_id: '',
-    status: 'pendente' as OrderStatus,
-    date: new Date().toISOString().split('T')[0],
-    obs: '',
-    items: [] as OrderItem[],
+    client_id:  '',
+    referral_id:'',
+    user_id:    '',   // ← seleção de representante para admin/manager
+    status:     'pendente' as OrderStatus,
+    date:       new Date().toISOString().split('T')[0],
+    obs:        '',
+    items:      [] as OrderItem[],
   });
   const [saving,setSaving]=useState(false);
   const [error,setError]=useState('');
 
-  useEffect(()=>{if (!hydrated) return; if(!isAuthenticated)router.push('/auth/login');},[isAuthenticated,router]);
+  useEffect(()=>{if (!hydrated) return; if(!isAuthenticated)router.push('/auth/login');},[isAuthenticated,router,hydrated]);
 
   const load=useCallback(async()=>{
     setLoading(true);
-    const [o,c,p,r]=await Promise.all([
+    const calls: Promise<any>[] = [
       apiFetch('/api/orders').then(x=>x.json()),
       apiFetch('/api/clients').then(x=>x.json()),
       apiFetch('/api/products').then(x=>x.json()),
       apiFetch('/api/referrals').then(x=>x.json()),
-    ]);
-    setOrders(o.orders??[]); setClients(c.clients??[]); setProducts(p.products??[]); setReferrals(r.referrals??[]);
+    ];
+
+    // Carregar representantes apenas para admin/manager
+    if (isAdminOrManager) {
+      calls.push(apiFetch('/api/representatives').then(x=>x.json()));
+    }
+
+    const results = await Promise.all(calls);
+    const [o,c,p,r] = results;
+    setOrders(o.orders??[]);
+    setClients(c.clients??[]);
+    setProducts(p.products??[]);
+    setReferrals(r.referrals??[]);
+    if (isAdminOrManager && results[4]) {
+      setRepresentatives((results[4].representatives ?? []).filter((rep: Representative) => rep.active));
+    }
     setLoading(false);
-  },[]);
+  },[isAdminOrManager]);
+
   useEffect(()=>{load();},[load]);
 
   const addItem=()=>setForm((f:any)=>({...f,items:[...f.items,{product_id:'',product_name:'',quantity:1,unit_price:0,rep_commission_pct:0}]}));
@@ -84,27 +113,30 @@ export default function SalesPage() {
 
   const total=form.items.reduce((s:number,i:any)=>s+Number(i.quantity)*Number(i.unit_price),0);
 
+  const calcCommission=()=>{
+    if(!form.referral_id)return 0;
+    const ref=referrals.find(r=>r.id===form.referral_id);
+    if(!ref)return 0;
+    return ref.commission_type==='percent'?(total*Number(ref.commission_pct??0)/100):Number(ref.commission??0);
+  };
+
   const save = async () => {
-    if (!form.client_id) {
-      setError('Cliente obrigatório');
-      return;
-    }
+    if (!form.client_id) { setError('Cliente obrigatório'); return; }
 
     const hasInvalidItems = form.items.some(
       (item: any) => !item.product_id || Number(item.quantity) <= 0
     );
-
-    if (hasInvalidItems) {
-      setError('Preencha todos os itens da venda antes de salvar.');
-      return;
-    }
+    if (hasInvalidItems) { setError('Preencha todos os itens da venda antes de salvar.'); return; }
 
     setSaving(true);
-
     try {
+      // Para representante logado, user_id é preenchido automaticamente no backend.
+      // Para admin/manager, enviamos user_id selecionado no formulário (pode ser vazio).
       const payload = {
         ...form,
         total,
+        commission_value: calcCommission(),
+        // user_id já está no form (string vazia ou ID selecionado)
       };
 
       const r = await apiFetch('/api/orders', {
@@ -112,21 +144,15 @@ export default function SalesPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
-
-      if (!r.ok) {
-        const j = await r.json();
-        throw new Error(j.error);
-      }
+      if (!r.ok) { const j = await r.json(); throw new Error(j.error); }
 
       await load();
       setShowModal(false);
       setForm({
-        client_id: '',
-        referral_id: '',
-        status: 'pendente' as OrderStatus,
-        date: new Date().toISOString().split('T')[0],
-        obs: '',
-        items: [] as OrderItem[],
+        client_id:'', referral_id:'', user_id:'',
+        status:'pendente' as OrderStatus,
+        date:new Date().toISOString().split('T')[0],
+        obs:'', items:[] as OrderItem[],
       });
       setError('');
     } catch (e: any) {
@@ -138,27 +164,16 @@ export default function SalesPage() {
 
   const changeStatus = async (id: string, status: OrderStatus) => {
     const order = orders.find((o: Order) => o.id === id);
-
     if (!order || typeof order.version !== 'number') {
       setError('Não foi possível identificar a versão atual do pedido.');
       return;
     }
-
     const response = await apiFetch(`/api/orders/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        status,
-        version: order.version,
-      }),
+      body: JSON.stringify({ status, version: order.version }),
     });
-
-    if (!response.ok) {
-      const j = await response.json();
-      setError(j.error || 'Erro ao atualizar pedido.');
-      return;
-    }
-
+    if (!response.ok) { const j = await response.json(); setError(j.error || 'Erro ao atualizar pedido.'); return; }
     setError('');
     await load();
   };
@@ -167,6 +182,13 @@ export default function SalesPage() {
     const ms=(o.clients?.name??'').toLowerCase().includes(search.toLowerCase())||String(o.order_number??'').includes(search);
     return ms&&(filterStatus==='todos'||o.status===filterStatus);
   });
+
+  // Nome do representante vinculado ao pedido
+  const repName = (userId: string | null | undefined) => {
+    if (!userId) return '—';
+    const rep = representatives.find(r => r.id === userId);
+    return rep ? (rep.name || rep.username) : userId.slice(0, 8) + '…';
+  };
 
   return (
     <DashboardShell>
@@ -179,9 +201,7 @@ export default function SalesPage() {
         </div>
 
         {error && !showModal && (
-          <div className="bg-red-500/10 border border-red-500 text-red-400 text-sm px-3 py-2 rounded-lg">
-            {error}
-          </div>
+          <div className="bg-red-500/10 border border-red-500 text-red-400 text-sm px-3 py-2 rounded-lg">{error}</div>
         )}
 
         {/* Totalizadores */}
@@ -212,12 +232,13 @@ export default function SalesPage() {
         :filtered.length===0?<div className="text-center py-12 text-dark-400"><ShoppingCart className="w-12 h-12 mx-auto mb-3 opacity-30"/><p>Nenhum pedido encontrado</p></div>
         :<div className="bg-dark-800 rounded-xl border border-dark-700 overflow-hidden">
           <div className="overflow-x-auto"><table className="w-full">
-            {/* ── CORREÇÃO: coluna Comissão removida — indicador pertence a /dashboard/commissions ── */}
             <thead><tr className="border-b border-dark-700 text-dark-400 text-xs uppercase">
               <th className="text-left px-4 py-3">Pedido</th>
               <th className="text-left px-4 py-3">Cliente</th>
               <th className="text-left px-4 py-3">Indicador</th>
+              {isAdminOrManager && <th className="text-left px-4 py-3">Representante</th>}
               <th className="text-left px-4 py-3">Total</th>
+              <th className="text-left px-4 py-3">Comissão</th>
               <th className="text-left px-4 py-3">Status</th>
               <th className="text-right px-4 py-3">Ação</th>
             </tr></thead>
@@ -229,7 +250,11 @@ export default function SalesPage() {
                     <div className="text-dark-500 text-xs">{o.date??''}</div></td>
                   <td className="px-4 py-3 text-white text-sm">{o.clients?.name??'—'}</td>
                   <td className="px-4 py-3 text-dark-300 text-sm">{o.referrals?.name??'—'}</td>
+                  {isAdminOrManager && (
+                    <td className="px-4 py-3 text-dark-300 text-xs">{repName(o.user_id)}</td>
+                  )}
                   <td className="px-4 py-3 text-white font-medium text-sm">{Number(o.total).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}</td>
+                  <td className="px-4 py-3 text-green-400 text-sm">{Number(o.commission_value??0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}</td>
                   <td className="px-4 py-3"><span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium border ${cfg.cls}`}>{cfg.label}</span></td>
                   <td className="px-4 py-3 text-right">
                     <select value={o.status} onChange={e=>changeStatus(o.id,e.target.value as OrderStatus)}
@@ -253,6 +278,14 @@ export default function SalesPage() {
             </div>
             <div className="p-6 space-y-4">
               {error&&<div className="bg-red-500/10 border border-red-500 text-red-400 text-sm px-3 py-2 rounded-lg">{error}</div>}
+
+              {/* Para representante, mostra aviso que pedido será vinculado a ele */}
+              {isRepresentative && (
+                <div className="bg-primary-600/10 border border-primary-500/30 text-primary-300 text-xs px-3 py-2 rounded-lg">
+                  Este pedido será registrado em seu nome automaticamente.
+                </div>
+              )}
+
               <div className="grid grid-cols-2 gap-4">
                 <div className="col-span-2"><label className="block text-xs text-dark-400 mb-1">Cliente *</label>
                   <select value={form.client_id} onChange={e=>setForm((f:any)=>({...f,client_id:e.target.value}))}
@@ -260,17 +293,36 @@ export default function SalesPage() {
                     <option value="">Selecione um cliente</option>
                     {clients.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}
                   </select></div>
+
                 <div><label className="block text-xs text-dark-400 mb-1">Indicador</label>
                   <select value={form.referral_id} onChange={e=>setForm((f:any)=>({...f,referral_id:e.target.value}))}
                     className="w-full bg-dark-900 border border-dark-700 rounded-lg px-3 py-2 text-white text-sm outline-none focus:ring-2 focus:ring-primary-500">
                     <option value="">Sem indicador</option>
                     {referrals.map(r=><option key={r.id} value={r.id}>{r.name}</option>)}
                   </select></div>
+
+                {/* Seleção de representante: apenas para admin/manager */}
+                {isAdminOrManager && (
+                  <div>
+                    <label className="block text-xs text-dark-400 mb-1">Representante</label>
+                    <select value={form.user_id} onChange={e=>setForm((f:any)=>({...f,user_id:e.target.value}))}
+                      className="w-full bg-dark-900 border border-dark-700 rounded-lg px-3 py-2 text-white text-sm outline-none focus:ring-2 focus:ring-primary-500">
+                      <option value="">Sem representante</option>
+                      {representatives.map(rep=>(
+                        <option key={rep.id} value={rep.id}>
+                          {rep.name || rep.username}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
                 <div><label className="block text-xs text-dark-400 mb-1">Status</label>
                   <select value={form.status} onChange={e=>setForm((f:any)=>({...f,status:e.target.value}))}
                     className="w-full bg-dark-900 border border-dark-700 rounded-lg px-3 py-2 text-white text-sm outline-none focus:ring-2 focus:ring-primary-500">
                     {(Object.keys(STATUS_CFG) as OrderStatus[]).map(s=><option key={s} value={s}>{STATUS_CFG[s].label}</option>)}
                   </select></div>
+
                 <div><label className="block text-xs text-dark-400 mb-1">Data</label>
                   <input type="date" value={form.date} onChange={e=>setForm((f:any)=>({...f,date:e.target.value}))}
                     className="w-full bg-dark-900 border border-dark-700 rounded-lg px-3 py-2 text-white text-sm outline-none focus:ring-2 focus:ring-primary-500"/></div>
@@ -311,13 +363,13 @@ export default function SalesPage() {
                 </div>
               </div>
 
-              {/* ── CORREÇÃO: Subtotal apenas — comissão de indicador removida do modal ── */}
+              {/* Totais */}
               {form.items.length>0&&(
-                <div className="bg-dark-900 rounded-lg p-4">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-dark-400">Total</span>
-                    <span className="text-white font-bold">{total.toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}</span>
-                  </div>
+                <div className="bg-dark-900 rounded-lg p-4 space-y-2">
+                  <div className="flex justify-between text-sm"><span className="text-dark-400">Subtotal</span>
+                    <span className="text-white font-medium">{total.toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}</span></div>
+                  {form.referral_id&&<div className="flex justify-between text-sm"><span className="text-dark-400">Comissão indicador</span>
+                    <span className="text-green-400">{calcCommission().toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}</span></div>}
                 </div>
               )}
             </div>

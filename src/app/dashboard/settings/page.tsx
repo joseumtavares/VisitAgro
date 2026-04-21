@@ -3,13 +3,15 @@ import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/authStore';
 import DashboardShell from '@/components/layout/DashboardShell';
-import { Settings, Building2, Key, CheckCircle, Tag, Plus, Trash2, Pencil } from 'lucide-react';
+import { Settings, Building2, Key, CheckCircle, Tag, Plus, Trash2, Pencil, Users } from 'lucide-react';
 import { apiFetch } from '@/lib/apiFetch';
+import RepresentativesTab from '@/components/settings/RepresentativesTab';
 
 interface Company { id:string; name:string; trade_name?:string; document?:string; address?:string; city?:string; state?:string; zip_code?:string; phone?:string; email?:string; }
 interface Category { id:string; name:string; description?:string|null; active:boolean; }
 
-type Tab = 'empresa' | 'senha' | 'categorias';
+// Adicionado 'representantes'
+type Tab = 'empresa' | 'senha' | 'categorias' | 'representantes';
 
 function Toast({msg,type}:{msg:string;type:'success'|'error'}) {
   if(!msg) return null;
@@ -23,9 +25,11 @@ function inp(extra='') {
 
 export default function SettingsPage() {
   const router = useRouter();
-  const { isAuthenticated, token } = useAuthStore();
+  const { isAuthenticated, user } = useAuthStore();
   const [hydrated, setHydrated] = useState(false);
   useEffect(() => { setHydrated(true); }, []);
+
+  const isAdmin = (user as any)?.role === 'admin';
 
   const [activeTab, setActiveTab] = useState<Tab>('empresa');
   const [company, setCompany] = useState<Partial<Company>>({});
@@ -118,10 +122,12 @@ export default function SettingsPage() {
     showToast('Categoria desativada'); await loadCategories();
   };
 
+  // Only admins see the Representatives tab
   const tabs: {id:Tab; label:string; icon:any}[] = [
-    { id:'empresa',    label:'Empresa',     icon:Building2 },
-    { id:'senha',      label:'Senha',       icon:Key },
-    { id:'categorias', label:'Categorias',  icon:Tag },
+    { id:'empresa',          label:'Empresa',          icon:Building2 },
+    { id:'senha',            label:'Senha',            icon:Key },
+    { id:'categorias',       label:'Categorias',       icon:Tag },
+    ...(isAdmin ? [{ id:'representantes' as Tab, label:'Representantes', icon:Users }] : []),
   ];
 
   return (
@@ -131,11 +137,11 @@ export default function SettingsPage() {
 
         <div>
           <h1 className="text-2xl font-bold text-white">Configurações</h1>
-          <p className="text-dark-400 text-sm mt-1">Gerencie empresa, acesso e categorias</p>
+          <p className="text-dark-400 text-sm mt-1">Gerencie empresa, acesso, categorias e representantes</p>
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-1 bg-dark-800 p-1 rounded-xl border border-dark-700 w-fit">
+        <div className="flex gap-1 bg-dark-800 p-1 rounded-xl border border-dark-700 w-fit flex-wrap">
           {tabs.map(t => {
             const Icon = t.icon;
             return (
@@ -269,6 +275,11 @@ export default function SettingsPage() {
               </div>
             </div>
           </div>
+        )}
+
+        {/* TAB: REPRESENTANTES — apenas admin */}
+        {activeTab === 'representantes' && (
+          <RepresentativesTab />
         )}
       </div>
 

@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAdmin, auditLog } from '@/lib/supabaseAdmin';
 import { generateCommission } from '@/lib/commissionHelper';
-import { generateRepCommissions } from '@/lib/repCommissionHelper';
+import { getRequestContext } from '@/lib/requestContext';
 
 export async function GET(req: NextRequest) {
-  const workspace = req.headers.get('x-workspace') || 'principal';
+  const { workspace } = getRequestContext(req);
 
   const { data, error } = await getAdmin()
     .from('orders')
@@ -42,20 +42,16 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const body   = await req.json();
-    const admin  = getAdmin();
-    const workspace = req.headers.get('x-workspace') || 'principal';
+    const body  = await req.json();
+    const admin = getAdmin();
 
-    // ── userId: lido do header injetado pelo middleware (JWT → x-user-id) ──
-    // Nunca depende do body — garante rastreabilidade do representante.
-    const rawUserId = req.headers.get('x-user-id');
-    const userId    = rawUserId && rawUserId.trim() !== '' ? rawUserId.trim() : null;
+    // ── Contexto do usuário autenticado ──────────────────────
+    const { workspace, role, userId } = getRequestContext(req);
 
     if (!body.client_id) {
       return NextResponse.json({ error: 'Cliente obrigatório' }, { status: 400 });
     }
 
-    // ── Itens ────────────────────────────────────────────────────────────
     const rawItems   = Array.isArray(body.items) ? body.items : [];
     const orderItems = rawItems.filter(
       (item: any) => item.product_id && Number(item.quantity) > 0
@@ -68,67 +64,74 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // ── Indicador / comissão ─────────────────────────────────────────────
-    const referralId =
-      body.referral_id && String(body.referral_id).trim() !== ''
-        ? String(body.referral_id).trim()
-        : null;
+    // ── Determinar user_id do pedido ─────────────────────────
+    // REGRA CRÍTICA: orders.user_id NUNCA deve ser null.
+    //   - representative → sempre usa o próprio userId (do JWT)
+    //   - admin/manager  → usa body.user_id se fornecido (seleção de rep
+    //                       no formulário), senão usa o próprio userId
+    let orderUserId: string | null = null;
 
+    if (role === 'representative') {
+      // Representante só pode criar pedidos para si mesmo
+      orderUserId = userId || null;
+    } else {
+      // Admin/manager: aceita seleção de representante via body
+      orderUserId = body.user_id || userId || null;
+    }
+
+    const orderId = crypto.randomUUID();
     let commissionValue = 0;
+    const total = Number(body.total ?? 0);
 
-    if (referralId) {
+    if (body.referral_id) {
       const { data: ref } = await admin
         .from('referrals')
-        .select('id,commission_type,commission_pct,commission')
-        .eq('id', referralId)
+        .select('commission_type,commission_pct,commission,workspace,deleted_at')
+        .eq('id', body.referral_id)
         .eq('workspace', workspace)
         .is('deleted_at', null)
         .maybeSingle();
 
       if (ref) {
-        const total = Number(body.total ?? 0);
         commissionValue =
           ref.commission_type === 'percent'
             ? (total * Number(ref.commission_pct ?? 0)) / 100
             : Number(ref.commission ?? 0);
       }
-      // Se ref nulo (indicador removido), apenas ignora a comissão
     }
 
-    // ── Construir payload do pedido ───────────────────────────────────────
-    const orderId = crypto.randomUUID();
-    const { items: _items, payment_type: _pt, ...orderData } = body;
+    const {
+      items: _items,
+      payment_type: _paymentType,
+      user_id: _userId,  // remover do spread — usaremos orderUserId
+      ...orderData
+    } = body;
+
     const now = new Date().toISOString();
 
-    const insertPayload = {
-      ...orderData,
-      id:               orderId,
-      workspace,
-      referral_id:      referralId,          // normalizado
-      user_id:          userId,              // explícito — nunca vem do body
-      commission_value: commissionValue,
-      commission_type:  orderData.commission_type || 'percent',
-      created_at:       now,
-      updated_at:       now,
-    };
-
-    // ── Inserir pedido ───────────────────────────────────────────────────
-    const { data: order, error: orderError } = await admin
+    const { data: order, error } = await admin
       .from('orders')
-      .insert([insertPayload])
+      .insert([
+        {
+          ...orderData,
+          id:               orderId,
+          workspace,
+          user_id:          orderUserId,   // ← SEMPRE preenchido
+          commission_value: commissionValue,
+          commission_type:  orderData.commission_type || 'percent',
+          created_at:       now,
+          updated_at:       now,
+        },
+      ])
       .select()
       .single();
 
-    if (orderError) {
-      console.error('[orders POST] Erro ao inserir pedido:', orderError.message);
-      return NextResponse.json({ error: orderError.message }, { status: 500 });
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    // ── Inserir itens ────────────────────────────────────────────────────
-    let itemsPayload: any[] = [];
-
-    if (orderItems.length > 0) {
-      itemsPayload = orderItems.map((item: any) => ({
+    if (orderItems.length) {
+      const itemsPayload = orderItems.map((item: any) => ({
         id:                 crypto.randomUUID(),
         order_id:           orderId,
         product_id:         item.product_id,
@@ -145,61 +148,22 @@ export async function POST(req: NextRequest) {
         .insert(itemsPayload);
 
       if (itemsError) {
-        console.error('[orders POST] Erro ao inserir itens:', itemsError.message);
         return NextResponse.json({ error: itemsError.message }, { status: 500 });
       }
     }
 
-    // ── Comissão de indicador (referral) ─────────────────────────────────
-    if (body.status === 'pago' && referralId && commissionValue > 0) {
+    if (body.status === 'pago' && body.referral_id && commissionValue > 0) {
       await generateCommission(admin, order, commissionValue);
-    }
-
-    // ── Comissões de representante ─────────────────────────────────────
-    // Condição: pedido já nasce pago E temos userId E há itens
-    if (body.status === 'pago' && userId && itemsPayload.length > 0) {
-      const repResult = await generateRepCommissions(admin, order, itemsPayload);
-
-      await auditLog(
-        '[VENDA] rep_commissions tentativa via POST',
-        {
-          order_id:   orderId,
-          user_id:    userId,
-          workspace,
-          items:      itemsPayload.length,
-          ...repResult,
-        },
-        userId ?? undefined
-      );
-    } else if (body.status === 'pago') {
-      // Log quando pago mas sem userId — ajuda a diagnosticar
-      await auditLog(
-        '[VENDA] rep_commissions ignorado — razão registrada',
-        {
-          order_id:        orderId,
-          workspace,
-          user_id_present: !!userId,
-          items_count:     itemsPayload.length,
-          status:          body.status,
-        }
-      );
     }
 
     await auditLog(
       '[VENDA] Pedido criado',
-      {
-        order_id: orderId,
-        total:    Number(body.total ?? 0),
-        status:   body.status,
-        user_id:  userId,
-        workspace,
-      },
-      userId ?? undefined
+      { order_id: orderId, total, workspace, user_id: orderUserId },
+      userId
     );
 
     return NextResponse.json({ order }, { status: 201 });
   } catch (e: any) {
-    console.error('[orders POST] Exceção:', e.message);
     return NextResponse.json({ error: e.message }, { status: 500 });
   }
 }

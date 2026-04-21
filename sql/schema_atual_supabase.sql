@@ -351,7 +351,7 @@ CREATE TABLE public.users (
   email text UNIQUE,
   pass_hash text NOT NULL,
   hash_algo text DEFAULT 'bcrypt'::text CHECK (hash_algo = ANY (ARRAY['bcrypt'::text, 'sha256'::text])),
-  role text DEFAULT 'user'::text CHECK (role = ANY (ARRAY['admin'::text, 'user'::text, 'manager'::text])),
+  role text DEFAULT 'user'::text CHECK (role = ANY (ARRAY['admin'::text, 'user'::text, 'manager'::text, 'representative'::text])),
   active boolean DEFAULT true,
   failed_logins integer DEFAULT 0,
   locked_until timestamp with time zone,

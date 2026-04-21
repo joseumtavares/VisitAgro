@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAdmin, auditLog } from '@/lib/supabaseAdmin';
 import { getRequestContext } from '@/lib/requestContext';
 import { hashPassword } from '@/lib/auth';
+import { resolveUserAccess } from '@/lib/representativeAccess';
 
 // ── POST /api/representatives/[id]/password ───────────────────
 // Redefine a senha de um representante.
@@ -10,8 +11,7 @@ export async function POST(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  import { resolveUserAccess } from '@/lib/representativeAccess';
-
+  
 const { userId } = getRequestContext(req);
 
 const access = await resolveUserAccess(userId);

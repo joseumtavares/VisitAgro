@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAdmin, auditLog } from '@/lib/supabaseAdmin';
 import { getRequestContext } from '@/lib/requestContext';
+import { resolveUserAccess } from '@/lib/representativeAccess';
 
 // ── GET /api/representatives/[id]/regions ─────────────────────
 // Lista as regiões (estado + cidade) de um representante.
@@ -41,8 +42,7 @@ export async function POST(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  import { resolveUserAccess } from '@/lib/representativeAccess';
-
+  
 const { userId } = getRequestContext(req);
 
 const access = await resolveUserAccess(userId);

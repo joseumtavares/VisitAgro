@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAdmin, auditLog } from '@/lib/supabaseAdmin';
 import { getRequestContext } from '@/lib/requestContext';
+import { resolveUserAccess } from '@/lib/representativeAccess';
 
 // ── DELETE /api/representatives/[id]/regions/[regionId] ───────
 // Remove uma região de um representante.
@@ -9,8 +10,7 @@ export async function DELETE(
   req: NextRequest,
   { params }: { params: { id: string; regionId: string } }
 ) {
-  import { resolveUserAccess } from '@/lib/representativeAccess';
-
+ 
 const { userId } = getRequestContext(req);
 
 const access = await resolveUserAccess(userId);

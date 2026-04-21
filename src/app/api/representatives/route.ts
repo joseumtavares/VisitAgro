@@ -2,12 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAdmin, auditLog } from '@/lib/supabaseAdmin';
 import { getRequestContext } from '@/lib/requestContext';
 import { hashPassword } from '@/lib/auth';
+import { resolveUserAccess } from '@/lib/representativeAccess';
 
 // ── GET /api/representatives ──────────────────────────────────
 // Retorna todos os representantes do workspace.
 // Acesso restrito: admin e manager.
 export async function GET(req: NextRequest) {
-  import { resolveUserAccess } from '@/lib/representativeAccess';
 
 const { userId } = getRequestContext(req);
 

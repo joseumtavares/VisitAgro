@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAdmin, auditLog } from '@/lib/supabaseAdmin';
 import { getRequestContext } from '@/lib/requestContext';
+import { resolveUserAccess } from '@/lib/representativeAccess';
 
 // ── GET /api/representatives/[id] ────────────────────────────
 // Representative pode ver a si mesmo; admin/manager veem qualquer um.
@@ -43,7 +44,7 @@ export async function PUT(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  import { resolveUserAccess } from '@/lib/representativeAccess';
+ 
 
 const { userId } = getRequestContext(req);
 

@@ -26,11 +26,11 @@ Aqui você encontra os materiais de apoio organizados de forma clara, visual e p
 - [👥 Agentes](./agents/)
 
 ### 🧪 Procedimentos Operacionais
-- [🧪 Teste Local e Publicação Segura](./09_teste-local-paths-publicacao-segura.md)
+- [🧪 Teste Local e Publicação Segura](./agents/09_teste-local-paths-publicacao-segura.md)
 
 ### 📦 Controle de Lotes
 - [📋 Convenção de Lotes](./lotes/README.md)
-- [🧩 Síntese final do lote L033](./lotes/L033_ETAPA_04_SINTESE.md)
+- [🔐 L036-A — Controle de acesso representative](./lotes/L036-A_ETAPA_01_EXECUCAO.md)
 - [🛠️ Registro técnico do lote L033](./patches/L033.md)
 
 ---
@@ -58,7 +58,7 @@ Aqui você encontra os materiais de apoio organizados de forma clara, visual e p
 | [Updates 0.9.4](./updates-v094.md) | Melhorias da versão 0.9.4 |
 | [Auditoria Técnica](./auditoria-tecnica.md) | Diagnóstico técnico completo |
 | [Playbook Operacional](./playbook-operacional.md) | Guia de operações |
-| [Teste Local e Publicação Segura](./09_teste-local-paths-publicacao-segura.md) | Validação obrigatória pré-commit |
+| [Teste Local e Publicação Segura](./agents/09_teste-local-paths-publicacao-segura.md) | Validação obrigatória pré-commit |
 
 ### Fluxo Multiagente
 
@@ -79,12 +79,19 @@ Aqui você encontra os materiais de apoio organizados de forma clara, visual e p
 | Patch | Descrição | Status |
 |-------|-----------|--------|
 | [020 - Product Components](./patches/020_product_components.md) | Adiciona tabela product_components | ✅ Aplicado |
+| [030 - Rep Commissions rep_id](./patches/030_rep_commissions_rep_id.md) | rep_id e rep_name em rep_commissions | ✅ Aplicado |
+| [040 - Rep Commissions indexes](./patches/040_rep_commissions_indexes.md) | Índices de unicidade e performance | ✅ Aplicado |
+| [050 - Representative Role](./patches/050_representative_role.md) | Perfil representative + índices rep_regions | ✅ Aplicado |
 
 ### Controle de Lotes
 
-- [Convenção de Lotes](./lotes/README.md) - Padrão para registro e rastreamento de lotes
-- [Síntese final do lote L033](./lotes/L033_ETAPA_04_SINTESE.md) - Consolidação final do branding estático mínimo
-- [Registro técnico do lote L033](./patches/L033.md) - Changelog técnico consolidado do lote
+| Lote | Arquivo | Status |
+|------|---------|--------|
+| L031 | [L031_ETAPA_01_EXECUCAO.md](./lotes/L031_ETAPA_01_EXECUCAO.md) | ✅ Fechado |
+| L032 | [L032_ETAPA_01_EXECUCAO.md](./lotes/L032_ETAPA_01_EXECUCAO.md) | ✅ Fechado |
+| L033 | [L033_ETAPA_04_SINTESE.md](./lotes/L033_ETAPA_04_SINTESE.md) | ✅ Fechado |
+| L034 | [L034_ETAPA_01_EXECUCAO.md](./lotes/L034_ETAPA_01_EXECUCAO.md) | ✅ Fechado |
+| L036-A | [L036-A_ETAPA_01_EXECUCAO.md](./lotes/L036-A_ETAPA_01_EXECUCAO.md) | ✅ Concluído |
 
 ---
 
@@ -93,39 +100,26 @@ Aqui você encontra os materiais de apoio organizados de forma clara, visual e p
 ```text
 docs/
 ├── index.md
+├── changelog.md
 ├── visao-geral.md
 ├── setup-banco.md
-├── changelog.md
 ├── auditoria-tecnica.md
 ├── playbook-operacional.md
-├── 09_teste-local-paths-publicacao-segura.md
 ├── agents/
-│   ├── 00_abertura_operador.md
-│   ├── 01_executor_patch.md
-│   ├── 02_revisor_tecnico.md
-│   ├── 03_auditor_segunda_camada.md
-│   ├── 04_sintese_final_retorno.md
-│   ├── 05_template_registro_lote.md
-│   ├── 06_template_handoff.md
-│   ├── 07_template_patch_sql.md
-│   └── 08_checklist_fechamento.md
+│   ├── 00_abertura_operador.md … 11_*
 ├── patches/
 │   ├── 020_product_components.md
-│   └── L033.md
-├── lotes/
-│   ├── README.md
-│   └── L033_ETAPA_04_SINTESE.md
-├── updates/
-└── handoffs/
+│   ├── L033.md
+│   ├── 040_rep_commissions_indexes.md
+│   └── 050_representative_role.md
+└── lotes/
+    ├── README.md
+    ├── L031_* … L033_*
+    ├── L034_ETAPA_01_EXECUCAO.md
+    ├── L036-A_ETAPA_01_EXECUCAO.md
+    ├── L036-A_ETAPA_03_AUDITORIA.md
+    └── L036-A_TESTES_E_VALIDACAO.md
 ```
-
----
-
-## 🌐 Publicação com GitHub Pages
-
-Se você ativar o **GitHub Pages** usando `main` + `/docs`, esta página pode virar a entrada do site de documentação do projeto.
-
-> Arquivo recomendado para entrada: `docs/index.md`
 
 ---
 
@@ -135,7 +129,5 @@ Se você ativar o **GitHub Pages** usando `main` + `/docs`, esta página pode vi
 |--------|-----------|
 | [Setup do banco](./setup-banco.md) | Passo a passo de preparação da base |
 | [Changelog](./changelog.md) | Histórico resumido e organizado |
-| [Updates 0.9.4](./updates-v094.md) | Correções e melhorias mais recentes |
 | [Auditoria técnica](./auditoria-tecnica.md) | Diagnóstico e visão de estabilidade |
 | [Playbook operacional](./playbook-operacional.md) | Guia de operações diárias |
-| [Teste local](./09_teste-local-paths-publicacao-segura.md) | Validação obrigatória antes de commit |

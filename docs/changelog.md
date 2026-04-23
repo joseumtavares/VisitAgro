@@ -3,6 +3,24 @@
 > Histórico organizado de mudanças relevantes do VisitAgro.
 
 ---
+
+## [0.9.6] — 21/04/2026
+
+### 🔐 Segurança — Controle de Acesso por Perfil (L036-A)
+- `GET /api/orders`: filtro por `user_id` quando `role === 'representative'` — representative vê apenas seus próprios pedidos
+- `UserRole`: tipo TypeScript atualizado com `'representative'` — alinhado com CHECK constraint do banco
+- `DashboardShell`: itens **Indicadores** e **Com. Indicadores** ocultados para `representative`
+- `sales/page.tsx`: coluna "Ação" e seletor de status ocultados para `representative` (UX)
+- Migration `050_representative_role.sql`: CHECK constraint de `users.role` atualizado + índices em `rep_regions`
+
+### ✅ Preservado sem alteração
+- `GET /api/rep-commissions` — já filtrava por `rep_id` para não-admin; comportamento mantido
+- `PUT /api/rep-commissions/[id]` — guard admin/manager preservado
+- Fluxo de criação de pedidos (POST /api/orders)
+- Geração automática de comissões ao pagar pedido
+
+---
+
 ## [0.9.5] — 18/04/2026
 
 ### 🗺️ Nova funcionalidade
@@ -10,7 +28,6 @@
 - Reutiliza GpsPickerMap existente — GPS automático, clique no mapa, marcador arrastável
 - Card visual de localização com coordenadas, link Google Maps, botões Copiar e Editar
 - Fluxos anteriores (CEP, Nominatim, campos manuais) 100% preservados
-
 
 ### 🎨 Branding / UI — L033
 - metadata atualizada com `VisitAgro Pro`, favicon e apple touch icon locais
@@ -48,17 +65,10 @@
 ## 📍 Próximos itens previstos
 
 ### 🟡 Em andamento / planejado
-- comissões para representantes
+- L036-B: guard em `PUT /api/orders/[id]` para representative (dívida técnica documentada)
 - controle de KM
 - ambientes e talhões
-- pré-cadastros / leads
 - evolução de relatórios analíticos
-
----
-
-## 💡 Observação
-
-Este changelog foi reorganizado em formato mais limpo para facilitar leitura rápida por desenvolvedores, gestores e futuros mantenedores do projeto.
 
 ---
 

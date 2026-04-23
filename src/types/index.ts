@@ -1,6 +1,6 @@
 // ============================================================
 // VisitAgro — src/types/index.ts
-// Atualizado em v0.9.7: adicionado role 'representative', RepRegion
+// Atualizado em L036-A: UserRole inclui 'representative'
 // ============================================================
 
 export type OrderStatus =
@@ -12,7 +12,7 @@ export type OrderStatus =
 
 export type CommissionStatus = 'pendente' | 'paga' | 'cancelada';
 
-// Adicionado 'representative' ao conjunto de roles
+// L036-A: adicionado 'representative' — alinhado com users.role no banco
 export type UserRole = 'admin' | 'user' | 'manager' | 'representative';
 
 export interface AuthUser {
@@ -194,32 +194,6 @@ export interface RepCommission {
   receipt_photo_ids?: string[] | null;
   paid_at?: string | null;
   reprocessed_at?: string | null;
-  created_at?: string | null;
-  updated_at?: string | null;
-}
-
-/** Representante (subconjunto de users com role='representative') */
-export interface Representative {
-  id: string;
-  workspace: string;
-  name?: string | null;
-  username: string;
-  email?: string | null;
-  role: 'representative';
-  active: boolean;
-  company_id?: string | null;
-  created_at?: string | null;
-  updated_at?: string | null;
-  regions?: RepRegion[];
-}
-
-/** Região atribuída a um representante */
-export interface RepRegion {
-  id: string;
-  workspace: string;
-  rep_id: string;
-  state: string;
-  city: string;
   created_at?: string | null;
   updated_at?: string | null;
 }

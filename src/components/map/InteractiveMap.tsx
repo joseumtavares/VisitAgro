@@ -48,7 +48,6 @@ const STATUS_LABELS: Record<ClientStatus, string> = {
   comprou: 'Comprou', naointeressado: 'Não Interessado', retornar: 'Retornar', outro: 'Outro',
 };
 
-// Lead colors — cyan palette, distinct from all client status colors
 const LEAD_STATUS_COLORS: Record<PreRegistrationStatus, string> = {
   novo:        '#06b6d4',
   contatado:   '#0ea5e9',
@@ -117,7 +116,7 @@ function LocateControl() {
       setLocDot(dot); if (circle) setLocCircle(circle);
     }, () => {}, { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 });
   };
-  return <div style={{ position: 'absolute', bottom: 80, right: 10, zIndex: 800 }}><button onClick={locate} title="Minha localização" style={{ width: 38, height: 38, borderRadius: '50%', border: '2px solid #fff', background: '#1e40af', color: '#fff', fontSize: 18, cursor: 'pointer', boxShadow: '0 2px 8px rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>📍</button></div>;
+  return <div style={{ position: 'absolute', bottom: 80, right: 10, zIndex: 800 }}><button onClick={locate} title="Minha localização" style={{ width: 44, height: 44, borderRadius: '50%', border: '2px solid #fff', background: '#1e40af', color: '#fff', fontSize: 18, cursor: 'pointer', boxShadow: '0 2px 8px rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>📍</button></div>;
 }
 
 function MapSearchBar() {
@@ -206,7 +205,7 @@ function CheckinModal({ form, setForm, onSave, onClose, saving }: {
             <div style={{ fontSize: 11, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 2 }}>Check-in de Visita</div>
             <div style={{ fontSize: 16, fontWeight: 700, color: '#f1f5f9' }}>{form.client_name}</div>
           </div>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#94a3b8', fontSize: 20, cursor: 'pointer', padding: 4 }}>✕</button>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#94a3b8', fontSize: 20, cursor: 'pointer', padding: 4, minWidth: 44, minHeight: 44 }}>✕</button>
         </div>
 
         <div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -214,7 +213,7 @@ function CheckinModal({ form, setForm, onSave, onClose, saving }: {
             <label style={{ fontSize: 11, color: '#94a3b8', display: 'block', marginBottom: 8 }}>TIPO DE ATIVIDADE</label>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               {ACTIVITY_TYPES.map(a => (
-                <button key={a} onClick={() => f('activity_type', a)} style={{ padding: '6px 14px', borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: 'pointer', background: form.activity_type === a ? '#2563eb' : '#0f172a', color: form.activity_type === a ? '#fff' : '#94a3b8', border: `1px solid ${form.activity_type === a ? '#2563eb' : '#334155'}` }}>
+                <button key={a} onClick={() => f('activity_type', a)} style={{ padding: '8px 14px', borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: 'pointer', background: form.activity_type === a ? '#2563eb' : '#0f172a', color: form.activity_type === a ? '#fff' : '#94a3b8', border: `1px solid ${form.activity_type === a ? '#2563eb' : '#334155'}`, minHeight: 44 }}>
                   {ACTIVITY_ICONS[a]} {a}
                 </button>
               ))}
@@ -223,7 +222,7 @@ function CheckinModal({ form, setForm, onSave, onClose, saving }: {
 
           <div>
             <label style={{ fontSize: 11, color: '#94a3b8', display: 'block', marginBottom: 6 }}>ATUALIZAR STATUS DO CLIENTE</label>
-            <select value={form.client_status} onChange={e => f('client_status', e.target.value as ClientStatus)} style={{ width: '100%', background: '#0f172a', border: '1px solid #334155', borderRadius: 8, padding: '8px 10px', color: '#f1f5f9', fontSize: 13 }}>
+            <select value={form.client_status} onChange={e => f('client_status', e.target.value as ClientStatus)} style={{ width: '100%', background: '#0f172a', border: '1px solid #334155', borderRadius: 8, padding: '10px', color: '#f1f5f9', fontSize: 13, minHeight: 44 }}>
               {(Object.keys(STATUS_LABELS) as ClientStatus[]).map(s => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
             </select>
           </div>
@@ -234,24 +233,24 @@ function CheckinModal({ form, setForm, onSave, onClose, saving }: {
           </div>
 
           <div style={{ background: '#0f172a', borderRadius: 10, padding: 14, border: '1px solid #334155' }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
-              <input type="checkbox" checked={form.schedule_next} onChange={e => f('schedule_next', e.target.checked)} style={{ width: 16, height: 16, accentColor: '#8b5cf6' }} />
+            <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', minHeight: 44 }}>
+              <input type="checkbox" checked={form.schedule_next} onChange={e => f('schedule_next', e.target.checked)} style={{ width: 20, height: 20, accentColor: '#8b5cf6' }} />
               <span style={{ fontSize: 13, color: '#e2e8f0', fontWeight: 600 }}>📅 Agendar próxima visita</span>
             </label>
             {form.schedule_next && (
               <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
                 <div>
                   <label style={{ fontSize: 11, color: '#94a3b8', display: 'block', marginBottom: 4 }}>DATA E HORA</label>
-                  <input type="datetime-local" value={form.next_visit_date} min={minDate} onChange={e => f('next_visit_date', e.target.value)} style={{ width: '100%', background: '#1e293b', border: '1px solid #334155', borderRadius: 8, padding: '8px 10px', color: '#f1f5f9', fontSize: 13, boxSizing: 'border-box' }} />
+                  <input type="datetime-local" value={form.next_visit_date} min={minDate} onChange={e => f('next_visit_date', e.target.value)} style={{ width: '100%', background: '#1e293b', border: '1px solid #334155', borderRadius: 8, padding: '10px', color: '#f1f5f9', fontSize: 13, boxSizing: 'border-box' }} />
                 </div>
                 <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                   {ACTIVITY_TYPES.map(a => (
-                    <button key={a} onClick={() => f('next_activity_type', a)} style={{ padding: '4px 10px', borderRadius: 16, fontSize: 11, cursor: 'pointer', background: form.next_activity_type === a ? '#7c3aed' : '#0f172a', color: form.next_activity_type === a ? '#fff' : '#94a3b8', border: `1px solid ${form.next_activity_type === a ? '#7c3aed' : '#334155'}` }}>
+                    <button key={a} onClick={() => f('next_activity_type', a)} style={{ padding: '6px 10px', borderRadius: 16, fontSize: 11, cursor: 'pointer', background: form.next_activity_type === a ? '#7c3aed' : '#0f172a', color: form.next_activity_type === a ? '#fff' : '#94a3b8', border: `1px solid ${form.next_activity_type === a ? '#7c3aed' : '#334155'}`, minHeight: 40 }}>
                       {ACTIVITY_ICONS[a]} {a}
                     </button>
                   ))}
                 </div>
-                <input value={form.next_obs} onChange={e => f('next_obs', e.target.value)} placeholder="Pauta da próxima visita..." style={{ width: '100%', background: '#1e293b', border: '1px solid #334155', borderRadius: 8, padding: '8px 10px', color: '#f1f5f9', fontSize: 13, boxSizing: 'border-box' }} />
+                <input value={form.next_obs} onChange={e => f('next_obs', e.target.value)} placeholder="Pauta da próxima visita..." style={{ width: '100%', background: '#1e293b', border: '1px solid #334155', borderRadius: 8, padding: '10px', color: '#f1f5f9', fontSize: 13, boxSizing: 'border-box' }} />
                 {form.next_visit_date && (
                   <a
                     href={(() => {
@@ -264,7 +263,7 @@ function CheckinModal({ form, setForm, onSave, onClose, saving }: {
                     })()}
                     target="_blank"
                     rel="noopener noreferrer"
-                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, background: '#1a73e8', color: '#fff', textDecoration: 'none', borderRadius: 8, padding: '8px 0', fontSize: 12, fontWeight: 600 }}
+                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, background: '#1a73e8', color: '#fff', textDecoration: 'none', borderRadius: 8, padding: '10px 0', fontSize: 12, fontWeight: 600 }}
                   >
                     📅 Adicionar ao Google Calendar
                   </a>
@@ -275,8 +274,8 @@ function CheckinModal({ form, setForm, onSave, onClose, saving }: {
         </div>
 
         <div style={{ padding: '0 20px 20px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-          <button onClick={onClose} disabled={saving} style={{ background: '#334155', color: '#e2e8f0', border: 'none', borderRadius: 10, padding: 14, fontSize: 14, cursor: 'pointer', fontWeight: 500 }}>Cancelar</button>
-          <button onClick={onSave} disabled={saving} style={{ background: saving ? '#374151' : '#16a34a', color: '#fff', border: 'none', borderRadius: 10, padding: 14, fontSize: 14, cursor: saving ? 'not-allowed' : 'pointer', fontWeight: 700 }}>
+          <button onClick={onClose} disabled={saving} style={{ background: '#334155', color: '#e2e8f0', border: 'none', borderRadius: 10, padding: 14, fontSize: 14, cursor: 'pointer', fontWeight: 500, minHeight: 48 }}>Cancelar</button>
+          <button onClick={onSave} disabled={saving} style={{ background: saving ? '#374151' : '#16a34a', color: '#fff', border: 'none', borderRadius: 10, padding: 14, fontSize: 14, cursor: saving ? 'not-allowed' : 'pointer', fontWeight: 700, minHeight: 48 }}>
             {saving ? '⏳ Salvando...' : '✅ Registrar Visita'}
           </button>
         </div>
@@ -446,12 +445,13 @@ export default function InteractiveMap({ compact = false }: { compact?: boolean 
         />
       )}
 
+      {/* L037: Banner de posicionamento de lead */}
       {placingLead && (
         <div style={{
           background: '#0c4a6e',
           border: '1px solid #0ea5e9',
           borderRadius: 8,
-          padding: '8px 16px',
+          padding: '10px 16px',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
@@ -462,17 +462,36 @@ export default function InteractiveMap({ compact = false }: { compact?: boolean 
           </span>
           <button
             onClick={() => setPlacingLead(false)}
-            style={{ background: '#164e63', border: '1px solid #0ea5e9', color: '#7dd3fc', borderRadius: 6, padding: '3px 10px', fontSize: 12, cursor: 'pointer' }}
+            style={{ background: '#164e63', border: '1px solid #0ea5e9', color: '#7dd3fc', borderRadius: 6, padding: '6px 12px', fontSize: 12, cursor: 'pointer', minHeight: 36 }}
           >
             Cancelar
           </button>
         </div>
       )}
 
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+      {/* L037: Filtros com scroll horizontal no mobile */}
+      <div
+        style={{
+          display: 'flex',
+          gap: 6,
+          overflowX: 'auto',
+          WebkitOverflowScrolling: 'touch',
+          paddingBottom: 4,
+          flexWrap: compact ? 'nowrap' : 'wrap',
+        }}
+      >
         {!compact && (
           <>
-            <button onClick={() => setFilter('todos')} style={{ padding: '4px 12px', borderRadius: 20, fontSize: 12, fontWeight: 500, cursor: 'pointer', background: filter === 'todos' ? '#2563eb' : '#1e293b', color: filter === 'todos' ? '#fff' : '#94a3b8', border: `1px solid ${filter === 'todos' ? '#2563eb' : '#334155'}` }}>
+            <button
+              onClick={() => setFilter('todos')}
+              style={{
+                padding: '6px 12px', borderRadius: 20, fontSize: 12, fontWeight: 500, cursor: 'pointer',
+                background: filter === 'todos' ? '#2563eb' : '#1e293b',
+                color: filter === 'todos' ? '#fff' : '#94a3b8',
+                border: `1px solid ${filter === 'todos' ? '#2563eb' : '#334155'}`,
+                whiteSpace: 'nowrap', minHeight: 36, flexShrink: 0,
+              }}
+            >
               Todos ({clients.filter(c => c.lat && c.lng).length})
             </button>
             {(Object.keys(STATUS_LABELS) as ClientStatus[]).map(s => {
@@ -480,8 +499,20 @@ export default function InteractiveMap({ compact = false }: { compact?: boolean 
               if (n === 0) return null;
               const active = filter === s;
               return (
-                <button key={s} onClick={() => setFilter(s)} style={{ padding: '4px 12px', borderRadius: 20, fontSize: 12, fontWeight: 500, cursor: 'pointer', background: active ? STATUS_COLORS[s] : '#1e293b', color: active ? '#fff' : '#94a3b8', border: `1px solid ${active ? STATUS_COLORS[s] : '#334155'}`, display: 'flex', alignItems: 'center', gap: 4 }}>
-                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: STATUS_COLORS[s], display: 'inline-block' }} />{STATUS_LABELS[s]} ({n})
+                <button
+                  key={s}
+                  onClick={() => setFilter(s)}
+                  style={{
+                    padding: '6px 12px', borderRadius: 20, fontSize: 12, fontWeight: 500, cursor: 'pointer',
+                    background: active ? STATUS_COLORS[s] : '#1e293b',
+                    color: active ? '#fff' : '#94a3b8',
+                    border: `1px solid ${active ? STATUS_COLORS[s] : '#334155'}`,
+                    display: 'flex', alignItems: 'center', gap: 4,
+                    whiteSpace: 'nowrap', minHeight: 36, flexShrink: 0,
+                  }}
+                >
+                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: STATUS_COLORS[s], display: 'inline-block' }} />
+                  {STATUS_LABELS[s]} ({n})
                 </button>
               );
             })}
@@ -490,17 +521,12 @@ export default function InteractiveMap({ compact = false }: { compact?: boolean 
               <button
                 onClick={() => setShowLeads(v => !v)}
                 style={{
-                  padding: '4px 12px',
-                  borderRadius: 20,
-                  fontSize: 12,
-                  fontWeight: 500,
-                  cursor: 'pointer',
+                  padding: '6px 12px', borderRadius: 20, fontSize: 12, fontWeight: 500, cursor: 'pointer',
                   background: showLeads ? '#06b6d4' : '#1e293b',
                   color: showLeads ? '#fff' : '#94a3b8',
                   border: `1px solid ${showLeads ? '#06b6d4' : '#334155'}`,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 4,
+                  display: 'flex', alignItems: 'center', gap: 4,
+                  whiteSpace: 'nowrap', minHeight: 36, flexShrink: 0,
                 }}
               >
                 <span style={{ fontSize: 11 }}>★</span>
@@ -510,31 +536,40 @@ export default function InteractiveMap({ compact = false }: { compact?: boolean 
           </>
         )}
 
+        {/* L037: CTA "Novo Lead aqui" — destaque, toque mínimo 44px */}
         <button
           onClick={() => setPlacingLead(v => !v)}
           style={{
-            padding: '4px 12px',
+            padding: '8px 16px',
             borderRadius: 20,
             fontSize: 12,
-            fontWeight: 500,
+            fontWeight: 700,
             cursor: 'pointer',
+            // L037: sem marginLeft: auto isolado — usa flexShrink + ordem natural
             marginLeft: compact ? 0 : 'auto',
-            background: placingLead ? '#0ea5e9' : '#1e293b',
+            background: placingLead ? '#0ea5e9' : '#0f172a',
             color: placingLead ? '#fff' : '#94a3b8',
-            border: `1px solid ${placingLead ? '#0ea5e9' : '#334155'}`,
+            border: `2px solid ${placingLead ? '#0ea5e9' : '#0ea5e9'}`,
+            whiteSpace: 'nowrap',
+            // L037: toque mínimo de 44px
+            minHeight: 44,
+            minWidth: 44,
+            flexShrink: 0,
           }}
         >
           📌 {placingLead ? 'Cancelar' : 'Novo Lead aqui'}
         </button>
       </div>
 
+      {/* L037: Container do mapa com altura adaptada para mobile */}
       <div
         style={{
           flex: 1,
           borderRadius: 10,
           overflow: 'hidden',
           position: 'relative',
-          minHeight: compact ? 240 : 520,
+          // L037: altura menor no mobile (compact=false em map/page, compact=true no dashboard)
+          minHeight: compact ? 200 : 'min(520px, calc(100dvh - 280px))',
           cursor: placingLead ? 'crosshair' : 'grab',
         }}
       >
@@ -580,8 +615,8 @@ export default function InteractiveMap({ compact = false }: { compact?: boolean 
                       <textarea value={editForm.obs ?? ''} onChange={e => setEditForm(f => ({ ...f, obs: e.target.value }))} rows={2} style={{ width: '100%', border: '1px solid #d1d5db', borderRadius: 5, padding: '4px 6px', fontSize: 12, marginTop: 2, resize: 'none', boxSizing: 'border-box' }} />
                     </div>
                     <div style={{ display: 'flex', gap: 6 }}>
-                      <button onClick={saveEdit} disabled={saving} style={{ flex: 1, background: '#16a34a', color: '#fff', border: 'none', borderRadius: 6, padding: '6px 0', fontSize: 12, cursor: 'pointer' }}>{saving ? '...' : '✓ Salvar'}</button>
-                      <button onClick={() => setEditingId(null)} style={{ flex: 1, background: '#e5e7eb', color: '#374151', border: 'none', borderRadius: 6, padding: '6px 0', fontSize: 12, cursor: 'pointer' }}>Cancelar</button>
+                      <button onClick={saveEdit} disabled={saving} style={{ flex: 1, background: '#16a34a', color: '#fff', border: 'none', borderRadius: 6, padding: '8px 0', fontSize: 12, cursor: 'pointer', minHeight: 36 }}>{saving ? '...' : '✓ Salvar'}</button>
+                      <button onClick={() => setEditingId(null)} style={{ flex: 1, background: '#e5e7eb', color: '#374151', border: 'none', borderRadius: 6, padding: '8px 0', fontSize: 12, cursor: 'pointer', minHeight: 36 }}>Cancelar</button>
                     </div>
                   </div>
                 ) : (
@@ -596,10 +631,11 @@ export default function InteractiveMap({ compact = false }: { compact?: boolean 
                       {(client.city || client.state) && <div>📍 {[client.city, client.state].filter(Boolean).join(' — ')}</div>}
                       {client.obs && <div style={{ fontStyle: 'italic', color: '#9ca3af', fontSize: 11, marginTop: 4 }}>"{client.obs}"</div>}
                     </div>
+                    {/* L037: botões com min-height para facilitar toque no mobile */}
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 5, marginTop: 10 }}>
-                      <a href={client.maps_link ?? `https://www.google.com/maps?q=${client.lat},${client.lng}`} target="_blank" rel="noopener noreferrer" style={{ textAlign: 'center', background: '#16a34a', color: '#fff', textDecoration: 'none', borderRadius: 6, padding: '7px 2px', fontSize: 11, fontWeight: 600 }}>🗺️ Maps</a>
-                      <button onClick={() => { setEditingId(client.id); setEditForm({ ...client }); }} style={{ background: '#2563eb', color: '#fff', border: 'none', borderRadius: 6, padding: '7px 2px', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>✏️ Editar</button>
-                      <button onClick={() => openCheckin(client)} style={{ background: '#7c3aed', color: '#fff', border: 'none', borderRadius: 6, padding: '7px 2px', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>✅ Check-in</button>
+                      <a href={client.maps_link ?? `https://www.google.com/maps?q=${client.lat},${client.lng}`} target="_blank" rel="noopener noreferrer" style={{ textAlign: 'center', background: '#16a34a', color: '#fff', textDecoration: 'none', borderRadius: 6, padding: '9px 2px', fontSize: 11, fontWeight: 600 }}>🗺️ Maps</a>
+                      <button onClick={() => { setEditingId(client.id); setEditForm({ ...client }); }} style={{ background: '#2563eb', color: '#fff', border: 'none', borderRadius: 6, padding: '9px 2px', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>✏️ Editar</button>
+                      <button onClick={() => openCheckin(client)} style={{ background: '#7c3aed', color: '#fff', border: 'none', borderRadius: 6, padding: '9px 2px', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>✅ Check-in</button>
                     </div>
                   </div>
                 )}
@@ -621,12 +657,7 @@ export default function InteractiveMap({ compact = false }: { compact?: boolean 
                   <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>{lead.name}</div>
                   <span
                     style={{
-                      display: 'inline-block',
-                      padding: '2px 10px',
-                      borderRadius: 20,
-                      fontSize: 11,
-                      fontWeight: 600,
-                      marginBottom: 8,
+                      display: 'inline-block', padding: '2px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600, marginBottom: 8,
                       background: (LEAD_STATUS_COLORS[lead.status] ?? '#06b6d4') + '22',
                       color: LEAD_STATUS_COLORS[lead.status] ?? '#06b6d4',
                       border: `1px solid ${(LEAD_STATUS_COLORS[lead.status] ?? '#06b6d4')}44`,
@@ -635,36 +666,14 @@ export default function InteractiveMap({ compact = false }: { compact?: boolean 
                     {LEAD_STATUS_LABELS[lead.status]}
                   </span>
                   <div style={{ fontSize: 12, color: '#4b5563', lineHeight: 1.6 }}>
-                    {lead.tel && (
-                      <div>📞 <a href={`tel:${lead.tel}`} style={{ color: '#2563eb' }}>{lead.tel}</a></div>
-                    )}
-                    {lead.source && (
-                      <div>🔖 {SOURCE_LABELS[lead.source] ?? lead.source}</div>
-                    )}
-                    {lead.interest && (
-                      <div style={{ fontSize: 11, color: '#6b7280' }}>💼 {lead.interest}</div>
-                    )}
-                    {lead.point_reference && (
-                      <div style={{ fontSize: 11, color: '#6b7280', fontStyle: 'italic', marginTop: 2 }}>
-                        📌 {lead.point_reference}
-                      </div>
-                    )}
+                    {lead.tel && (<div>📞 <a href={`tel:${lead.tel}`} style={{ color: '#2563eb' }}>{lead.tel}</a></div>)}
+                    {lead.source && (<div>🔖 {SOURCE_LABELS[lead.source] ?? lead.source}</div>)}
+                    {lead.interest && (<div style={{ fontSize: 11, color: '#6b7280' }}>💼 {lead.interest}</div>)}
+                    {lead.point_reference && (<div style={{ fontSize: 11, color: '#6b7280', fontStyle: 'italic', marginTop: 2 }}>📌 {lead.point_reference}</div>)}
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 5, marginTop: 10 }}>
-                    <a
-                      href={lead.maps_link ?? `https://www.google.com/maps?q=${lead.lat},${lead.lng}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      style={{ textAlign: 'center', background: '#16a34a', color: '#fff', textDecoration: 'none', borderRadius: 6, padding: '7px 2px', fontSize: 11, fontWeight: 600 }}
-                    >
-                      🗺️ Maps
-                    </a>
-                    <a
-                      href={`/dashboard/pre-registrations?edit=${lead.id}`}
-                      style={{ textAlign: 'center', background: '#0891b2', color: '#fff', textDecoration: 'none', borderRadius: 6, padding: '7px 2px', fontSize: 11, fontWeight: 600 }}
-                    >
-                      ✏️ Editar
-                    </a>
+                    <a href={lead.maps_link ?? `https://www.google.com/maps?q=${lead.lat},${lead.lng}`} target="_blank" rel="noopener noreferrer" style={{ textAlign: 'center', background: '#16a34a', color: '#fff', textDecoration: 'none', borderRadius: 6, padding: '9px 2px', fontSize: 11, fontWeight: 600 }}>🗺️ Maps</a>
+                    <a href={`/dashboard/pre-registrations?edit=${lead.id}`} style={{ textAlign: 'center', background: '#0891b2', color: '#fff', textDecoration: 'none', borderRadius: 6, padding: '9px 2px', fontSize: 11, fontWeight: 600 }}>✏️ Editar</a>
                   </div>
                 </div>
               </Popup>

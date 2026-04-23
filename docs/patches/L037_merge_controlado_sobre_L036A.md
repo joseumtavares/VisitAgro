@@ -1,3 +1,96 @@
+# Merge controlado — L036-A + L037
+
+**Base priorizada:** L036-A  
+**Origem visual:** L037 responsividade mobile  
+**Regra crítica:** nenhuma lógica de negócio do L036-A foi sobrescrita.
+
+---
+
+## Arquivos avaliados
+
+### Arquivos em comum literal nos pacotes
+
+- `docs/changelog.md`
+- `docs/index.md`
+
+### Arquivos equivalentes por intenção/path técnico
+
+- L036-A: `src/components/layout/DashboardShell.tsx`
+- L037: `DashboardShell.tsx` / `novos-arquivos/DashboardShell.tsx`
+
+Este foi o único arquivo de código com correspondência segura para aplicação da responsividade.
+
+---
+
+## Arquivos do L037 ignorados no merge automático
+
+Os arquivos abaixo foram ignorados porque não existem no pacote L036-A enviado com caminho equivalente e poderiam gerar sobrescrita indevida ou criação fora do escopo:
+
+- `InteractiveMap.tsx`
+- `dashboard-page.tsx`
+- `map-page.tsx`
+- `novos-arquivos/InteractiveMap.tsx`
+- `novos-arquivos/dashboard-page.tsx`
+- `novos-arquivos/map-page.tsx`
+
+A aplicação desses ajustes deve ser feita apenas quando os arquivos reais correspondentes do repositório forem fornecidos/confirmados.
+
+---
+
+## Arquivo modificado
+
+### 1. Arquivo
+
+`src/components/layout/DashboardShell.tsx`
+
+### 2. Tipo de alteração
+
+- [x] ajuste visual
+- [x] responsividade
+- [x] refatoração leve
+
+### 3. Descrição
+
+Aplicada responsividade não destrutiva sobre a base L036-A:
+
+- adiciona `sidebarOpen` apenas para controlar menu mobile;
+- adiciona header mobile com botão hamburguer;
+- adiciona overlay mobile para fechar menu;
+- mantém sidebar fixa no desktop;
+- fecha menu ao navegar em links no mobile;
+- melhora área de toque mínima dos links/botões;
+- preserva integralmente filtros por perfil do L036-A:
+  - `adminOnly` continua visível apenas para admin;
+  - `hideForRepresentative` continua ocultando Indicadores e Com. Indicadores para representative.
+
+### 4. Decisão de conflito
+
+Quando houve diferença entre L036-A e L037, foi priorizado o L036-A.
+
+Exemplo: o L037 trazia uma estrutura própria de `NAV` agrupado. Ela não foi adotada porque poderia remover/alterar a lógica de perfil do L036-A. A responsividade foi aplicada manualmente sobre `NAV_ITEMS` existente.
+
+---
+
+## Checklist de validação
+
+- [x] Nenhuma regra de comissão foi alterada
+- [x] Nenhuma API foi alterada
+- [x] Nenhum campo obrigatório foi removido
+- [x] Nenhuma query SQL foi alterada
+- [x] Tipagens de negócio preservadas
+- [x] Menu desktop preservado
+- [x] Menu mobile adicionado com overlay
+- [x] Acesso por perfil do representative preservado
+- [ ] Validar build no repositório real com `npm run build`
+- [ ] Validar mobile ≤ 768px em navegador/dispositivo real
+- [ ] Validar tablet
+- [ ] Validar desktop
+
+---
+
+## Código final completo
+
+```tsx
 'use client';
 /**
  * src/components/layout/DashboardShell.tsx — Merge controlado L036-A + L037
@@ -213,3 +306,4 @@ export default function DashboardShell({ children }: { children: React.ReactNode
     </div>
   );
 }
+```

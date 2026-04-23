@@ -2,6 +2,28 @@
 
 > Histórico organizado de mudanças relevantes do VisitAgro.
 
+## [L037] — 22/04/2026
+
+### 📱 Responsividade mobile do dashboard e mapa
+
+- Menu hamburguer no header mobile (`lg:hidden`)
+- Sidebar colapsável com overlay e animação suave
+- Grid do dashboard: `grid-cols-1 sm:grid-cols-2 lg:grid-cols-3`
+- Altura do mapa adaptada com `100dvh` para mobile
+- Filtros do mapa com scroll horizontal no mobile
+- Botão "Novo Lead aqui" com toque mínimo de 44px e destaque visual
+- Área de toque mínima (44px) nos botões do check-in modal
+- Zero regressão no layout desktop
+
+**Arquivos alterados:**
+- `src/components/layout/DashboardShell.tsx`
+- `src/components/map/InteractiveMap.tsx`
+- `src/app/dashboard/map/page.tsx`
+- `src/app/dashboard/page.tsx`
+
+**Documentação:**
+- `docs/patches/L037_responsividade.md`
+- 
 ---
 
 ## [0.9.6] — 21/04/2026

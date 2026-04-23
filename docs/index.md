@@ -33,6 +33,8 @@ Aqui você encontra os materiais de apoio organizados de forma clara, visual e p
 - [🔐 L036-A — Controle de acesso representative](./lotes/L036-A_ETAPA_01_EXECUCAO.md)
 - [🛠️ Registro técnico do lote L033](./patches/L033.md)
 
+### 🩹 Patches aplicados
+- [📱 L037 — Responsividade mobile](./patches/L037_responsividade.md)
 ---
 
 ## ✨ O que você encontra aqui
@@ -93,6 +95,7 @@ Aqui você encontra os materiais de apoio organizados de forma clara, visual e p
 | L034 | [L034_ETAPA_01_EXECUCAO.md](./lotes/L034_ETAPA_01_EXECUCAO.md) | ✅ Fechado |
 | L036-A | [L036-A_ETAPA_01_EXECUCAO.md](./lotes/L036-A_ETAPA_01_EXECUCAO.md) | ✅ Concluído |
 
+
 ---
 
 ## 🧩 Estrutura de Pastas
@@ -112,6 +115,7 @@ docs/
 │   ├── L033.md
 │   ├── 040_rep_commissions_indexes.md
 │   └── 050_representative_role.md
+    └── L037_responsividade.md
 └── lotes/
     ├── README.md
     ├── L031_* … L033_*
@@ -131,3 +135,5 @@ docs/
 | [Changelog](./changelog.md) | Histórico resumido e organizado |
 | [Auditoria técnica](./auditoria-tecnica.md) | Diagnóstico e visão de estabilidade |
 | [Playbook operacional](./playbook-operacional.md) | Guia de operações diárias |
+| [L037 — Responsividade mobile](./patches/L037_responsividade.md) | Patch de responsividade do dashboard e mapa |
+

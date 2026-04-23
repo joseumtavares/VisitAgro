@@ -281,3 +281,31 @@ export interface PreRegistration {
   created_at?: string | null;
   updated_at?: string | null;
 }
+
+// ── Representantes (L036-A) ───────────────────────────────────
+// Usuário com role='representative'. Campos alinhados com o SELECT
+// em /api/representatives (tabela users).
+export interface Representative {
+  id: string;
+  workspace: string;
+  name?: string | null;
+  username: string;
+  email?: string | null;
+  role: UserRole;
+  active?: boolean | null;
+  company_id?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+}
+
+// Região atendida por um representante (tabela rep_regions).
+// Campos alinhados com o SELECT em /api/representatives/[id]/regions.
+export interface RepRegion {
+  id: string;
+  workspace: string;
+  rep_id: string;
+  state: string;
+  city: string;
+  created_at?: string | null;
+  updated_at?: string | null;
+}

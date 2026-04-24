@@ -228,3 +228,58 @@ A execução é inválida se:
 ## Regra final
 
 Sem suposição, sem refatoração cosmética, sem ampliar escopo, sem pseudo-patch, sem validação fictícia, sem pacote incompleto.
+
+
+---
+
+## 🔧 Regra obrigatória de commit (Summary + Description)
+
+Sempre que este agente gerar um patch, deve incluir:
+
+### Commit Summary
+
+- Máximo ~72 caracteres
+- Usar prefixo:
+  - feat:
+  - fix:
+  - docs:
+  - refactor:
+  - chore:
+- Incluir lote se aplicável
+
+Exemplo:
+docs: atualiza auditoria e roadmap L0XX
+
+---
+
+### Commit Description
+
+Formato obrigatório:
+
+Lote: L0XX
+
+Objetivo:
+- ...
+
+Arquivos principais:
+- ...
+
+Validação:
+- npm run lint: PASSOU/BLOQUEADO
+- npm run build: PASSOU/BLOQUEADO
+- Testes manuais: PASSOU/BLOQUEADO
+
+Riscos:
+- ...
+
+Rollback:
+- Reverter commit se necessário
+
+---
+
+### Checklist de commit
+
+- [ ] Summary gerado
+- [ ] Description gerada
+- [ ] Summary curto e claro
+- [ ] Description completa

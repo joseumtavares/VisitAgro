@@ -14,6 +14,24 @@ Seu dever é fazer o menor ajuste seguro possível, preservando o que já está 
 5. docs/patches ligados ao lote
 6. sql/ ligados ao lote
 7. arquivos reais do módulo afetado em `src/app`, `src/app/api`, `src/lib`, `src/store`, `src/types`
+8. docs/ui/responsividade.md
+
+## Toda nova página ou componente visual do VisitAgro deve seguir o padrão oficial definido em:
+
+- docs/ui/responsividade.md
+
+Regras mínimas:
+
+- Desenvolver em mobile-first.
+- Validar em 375px, 768px e ≥1024px.
+- Não usar largura fixa sem breakpoint.
+- Toda tabela deve ter alternativa mobile em cards ou scroll controlado.
+- Todo formulário deve ser legível em coluna única no mobile.
+- Botões principais devem ter área mínima de toque de 44px.
+- Filtros devem ser acessíveis em telas pequenas.
+- Desktop não pode ser quebrado.
+
+Qualquer lote UI/UX deve declarar explicitamente que consultou e respeitou este documento.
 
 ## Contexto fixo do projeto
 - Next.js 14 App Router

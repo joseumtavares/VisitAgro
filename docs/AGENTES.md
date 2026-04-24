@@ -91,6 +91,27 @@ Para estes arquivos:
 
 ---
 
+## 4.1 Responsividade obrigatória
+
+Toda nova página ou componente visual do VisitAgro deve seguir o padrão oficial definido em:
+
+- docs/ui/responsividade.md
+
+Regras mínimas:
+
+- Desenvolver em mobile-first.
+- Validar em 375px, 768px e ≥1024px.
+- Não usar largura fixa sem breakpoint.
+- Toda tabela deve ter alternativa mobile em cards ou scroll controlado.
+- Todo formulário deve ser legível em coluna única no mobile.
+- Botões principais devem ter área mínima de toque de 44px.
+- Filtros devem ser acessíveis em telas pequenas.
+- Desktop não pode ser quebrado.
+
+Qualquer lote UI/UX deve declarar explicitamente que consultou e respeitou este documento.
+
+---
+
 ## 5. Banco de dados e Supabase
 
 - O cliente **`getAdmin()` ignora RLS** — filtros de **`workspace`**, **`deleted_at`** e autorização devem ser **explícitos na camada da rota**.

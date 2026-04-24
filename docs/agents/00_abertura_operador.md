@@ -12,6 +12,7 @@ Antes de envolver qualquer agente de implementação ou revisão, você deve abr
 4. docs/changelog.md
 5. docs/patches relacionados ao tema, se existirem
 6. sql/ relacionados ao tema, se existirem
+7. docs/ui/responsividade.md
 
 ## Sua missão
 Definir um lote pequeno, validável e sem ambiguidade.
@@ -41,6 +42,13 @@ Definir um lote pequeno, validável e sem ambiguidade.
   - documentação em `docs/patches/NNN_slug.md`
   - atualização de `docs/index.md`
   - atualização de `docs/changelog.md`
+
+  Toda nova tela deve seguir o padrão mobile-first definido em docs/ui/responsividade.md.
+
+É proibido entregar páginas novas sem validação mínima em:
+- 375px mobile
+- 768px tablet
+- 1024px desktop
 
 ## Formato obrigatório da saída
 1. Resumo do lote

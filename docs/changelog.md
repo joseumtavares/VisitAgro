@@ -1,7 +1,29 @@
 # 📝 Changelog
 
 > Histórico organizado de mudanças relevantes do VisitAgro.
+> 
+## [L036-B] — 24/04/2026
 
+### 📊 Central de Relatórios — comissões e vendas por representante
+
+- Nova página `/dashboard/reports` — entrada única para relatórios
+- Endpoint `GET /api/reports/rep-commissions` com filtros por período, status e representante
+- Endpoint `GET /api/reports/sales-by-representative` com filtros e agrupamento por representante
+- Controle de acesso L036-A preservado: `representative` vê apenas dados próprios
+- Admin/manager: dropdown de representantes + tabela consolidada `by_representative`
+- Totalizadores calculados no servidor (mesma fonte que os dados do banco)
+- Sem PDF, sem WhatsApp (escopo deste lote)
+- Zero alteração de schema
+
+**Arquivos criados:**
+- `src/app/api/reports/rep-commissions/route.ts`
+- `src/app/api/reports/sales-by-representative/route.ts`
+- `src/app/dashboard/reports/page.tsx`
+
+**Arquivos alterados:**
+- `src/components/layout/DashboardShell.tsx` (nav item Relatórios + import BarChart2)
+
+---
 ## [L037] — 22/04/2026
 
 ### 📱 Responsividade mobile do dashboard e mapa

@@ -40,6 +40,7 @@ import {
   Wrench,
   ScrollText,
   Award,
+  BarChart2,
   Menu,
   X,
 } from 'lucide-react';
@@ -60,8 +61,9 @@ const NAV_ITEMS: NavItem[] = [
   // Indicadores e Com. Indicadores: ocultos para representative
   { href: '/dashboard/referrals',        label: 'Indicadores',         icon: <UserCheck       className="w-4 h-4" />, hideForRepresentative: true },
   { href: '/dashboard/commissions',      label: 'Com. Indicadores',    icon: <TrendingUp      className="w-4 h-4" />, hideForRepresentative: true },
-  { href: '/dashboard/rep-commissions',  label: 'Com. Representantes', icon: <Award           className="w-4 h-4" /> },
-  { href: '/dashboard/map',              label: 'Mapa',                icon: <Map             className="w-4 h-4" /> },
+  { href: '/dashboard/rep-commissions',  label: 'Com. Representantes', icon: <Award      className="w-4 h-4" /> },
+  { href: '/dashboard/reports',          label: 'Relatórios',          icon: <BarChart2  className="w-4 h-4" /> },
+  { href: '/dashboard/map',              label: 'Mapa',                icon: <Map        className="w-4 h-4" /> },
   { href: '/dashboard/settings',         label: 'Configurações',       icon: <Settings        className="w-4 h-4" /> },
   // adminOnly: Manutenção e Logs — comportamento anterior preservado
   { href: '/dashboard/maintenance',      label: 'Manutenção',          icon: <Wrench          className="w-4 h-4" />, adminOnly: true },

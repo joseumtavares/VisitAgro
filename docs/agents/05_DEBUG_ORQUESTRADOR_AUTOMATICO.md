@@ -52,6 +52,48 @@ Comentar somente quando houver:
 - loading/error state que mascara falha;
 - fluxo sensível de entrada, transformação ou saída de dados.
 
+1. **Todo código DEVE seguir o padrão**: docs/padrao_de_comentarios.md (v2.0)
+2. **Antes de finalizar o código**:
+    - Verifique se **todas as funções** têm comentário.
+    - Inclua **AI-CONTEXT** quando relevante.
+    - Marque **blocos críticos** com `CRITICAL`.
+3. **Código que não segue o padrão DEVE ser corrigido automaticamente**.
+4. **Considerações sobre lint automático**: O lint rejeitará códigos que não estejam conforme o padrão.
+
+# Padrão de Comentários para IA (v2.0) - Instruções
+
+- **Comentários devem explicar o "PORQUÊ" e não o "O QUÊ".**
+- **Sempre marque blocos críticos**.
+- **Documentação estruturada é obrigatória para APIs.**
+- **Evite comentários óbvios ou desatualizados**.
+- **Comentários de arquitetura, dependências e impacto devem ser claros.**
+
+## Exemplo de código:
+
+```javascript
+/**
+ * Função responsável por calcular a comissão de vendas.
+ *
+ * @param {Object} sale - Objeto contendo os dados da venda.
+ * @param {number} sale.value - O valor total da venda.
+ * @param {number} sale.representativeId - ID do representante responsável pela venda.
+ * @param {string} sale.date - Data da venda no formato 'YYYY-MM-DD'.
+ *
+ * @returns {number} O valor da comissão calculada.
+ *
+ * @throws {Error} Se os dados da venda estiverem incorretos.
+ *
+ * Exemplo de uso:
+ * const comissao = calcularComissao({ value: 1000, representativeId: 1, date: '2026-04-24' });
+ */
+```
+
+# **Verificação automática de padrões**
+
+1. **Blocos críticos** devem ser identificados com `// CRITICAL: ...`.
+2. **AI-CONTEXT** e **AI-RULE** devem ser utilizados quando relevante, explicando o uso da inteligência artificial no código.
+3. A verificação de lint automatizada **rejeita** códigos que não atendem ao padrão.
+
 ## Marcadores permitidos
 
 - `// REGRA:`

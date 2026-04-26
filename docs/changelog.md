@@ -1,7 +1,33 @@
 # 📝 Changelog
 
 > Histórico organizado de mudanças relevantes do VisitAgro.
-> 
+
+## [L036-C] — 26/04/2026
+
+### 📄 Exportação PDF e resumo WhatsApp — Central de Relatórios
+
+- PDF real gerado no servidor via `pdf-lib v1.17.1` (sem dependência do browser)
+- `GET /api/reports/rep-commissions/pdf` — PDF de comissões com logotipo e dados da empresa
+- `GET /api/reports/sales-by-representative/pdf` — PDF de vendas (consolidado por rep ou individual)
+- `GET /api/reports/rep-commissions/whatsapp` — texto formatado pronto para copiar
+- Botões "Baixar PDF" e "Copiar resumo WhatsApp" integrados na Central de Relatórios
+- Regras de acesso L036-A preservadas em todos os endpoints
+- Responsividade: botões com `min-h-[44px]`, `flex flex-wrap` para mobile
+- Zero alteração de schema
+
+**Arquivos criados:**
+- `src/lib/reports/helpers.ts`
+- `src/lib/reports/pdfBuilder.ts`
+- `src/app/api/reports/rep-commissions/pdf/route.ts`
+- `src/app/api/reports/rep-commissions/whatsapp/route.ts`
+- `src/app/api/reports/sales-by-representative/pdf/route.ts`
+
+**Arquivo alterado:**
+- `src/app/dashboard/reports/page.tsx` (botões + handlers de exportação)
+- `package.json` (adicionado `pdf-lib ^1.17.1`)
+
+---
+
 ## [L036-B] — 24/04/2026
 
 ### 📊 Central de Relatórios — comissões e vendas por representante
@@ -24,6 +50,7 @@
 - `src/components/layout/DashboardShell.tsx` (nav item Relatórios + import BarChart2)
 
 ---
+
 ## [L037] — 22/04/2026
 
 ### 📱 Responsividade mobile do dashboard e mapa

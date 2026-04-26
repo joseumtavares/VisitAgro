@@ -1,6 +1,6 @@
 'use client';
 /**
- * src/app/dashboard/reports/page.tsx — L036-B
+ * src/app/dashboard/reports/page.tsx — L036-B / L036-C
  *
  * Central de Relatórios.
  * Entrada única para relatório de comissões e vendas por representante.
@@ -9,8 +9,7 @@
  *   - representative: vê apenas relatórios próprios
  *   - admin / manager: vê individuais e consolidados, com filtro por representante
  *
- * Design: espelha o padrão das páginas existentes (rep-commissions, sales).
- * Sem PDF, sem WhatsApp (escopo L036-B).
+ * L036-C: botões Baixar PDF e Copiar WhatsApp integrados.
  */
 
 import { useCallback, useEffect, useState } from 'react';
@@ -24,6 +23,10 @@ import {
   Filter,
   RefreshCw,
   ChevronDown,
+  Download,
+  MessageSquare,
+  Copy,
+  Check,
 } from 'lucide-react';
 
 // ── tipos locais ──────────────────────────────────────────────────────────────
@@ -131,6 +134,11 @@ export default function ReportsPage() {
   const [loading,     setLoading]     = useState(false);
   const [error,       setError]       = useState('');
 
+  // ── ações de exportação
+  const [pdfLoading,    setPdfLoading]    = useState(false);
+  const [waCopied,      setWaCopied]      = useState(false);
+  const [waLoading,     setWaLoading]     = useState(false);
+
   // ── lista de representantes (admin/manager)
   const [repList, setRepList] = useState<{ id: string; name: string }[]>([]);
 
@@ -144,6 +152,62 @@ export default function ReportsPage() {
       })
       .catch(() => {});
   }, [isAdminOrManager]);
+
+  // ── helper para construir query string (reutilizado em JSON + PDF + WA)
+  const buildQs = useCallback((extraStatus?: string) => {
+    const params = new URLSearchParams();
+    if (dateFrom) params.set('date_from', dateFrom);
+    if (dateTo)   params.set('date_to',   dateTo);
+    const st = extraStatus ?? (tab === 'commissions' ? commStatus : salesStatus);
+    if (st)   params.set('status', st);
+    if (repId && isAdminOrManager) params.set('rep_id', repId);
+    const qs = params.toString();
+    return qs ? `?${qs}` : '';
+  }, [dateFrom, dateTo, commStatus, salesStatus, repId, isAdminOrManager, tab]);
+
+  // ── baixar PDF
+  const handleDownloadPdf = useCallback(async () => {
+    setPdfLoading(true);
+    try {
+      const base = tab === 'commissions'
+        ? '/api/reports/rep-commissions/pdf'
+        : '/api/reports/sales-by-representative/pdf';
+      const res = await apiFetch(`${base}${buildQs()}`);
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        setError((d as any)?.error || 'Erro ao gerar PDF.');
+        return;
+      }
+      const blob = await res.blob();
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement('a');
+      a.href     = url;
+      a.download = tab === 'commissions' ? 'comissoes.pdf' : 'vendas.pdf';
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setPdfLoading(false);
+    }
+  }, [tab, buildQs]);
+
+  // ── copiar resumo WhatsApp (apenas comissões por ora)
+  const handleCopyWhatsApp = useCallback(async () => {
+    setWaLoading(true);
+    try {
+      const res = await apiFetch(`/api/reports/rep-commissions/whatsapp${buildQs()}`);
+      const d   = await res.json().catch(() => ({}));
+      if (!res.ok) { setError((d as any)?.error || 'Erro ao gerar resumo.'); return; }
+      await navigator.clipboard.writeText((d as any).text ?? '');
+      setWaCopied(true);
+      setTimeout(() => setWaCopied(false), 2500);
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setWaLoading(false);
+    }
+  }, [buildQs]);
 
   // ── busca relatório de comissões
   const fetchCommissions = useCallback(async () => {
@@ -365,6 +429,37 @@ export default function ReportsPage() {
             {error}
           </div>
         )}
+
+        {/* ── Ações de exportação ── */}
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={handleDownloadPdf}
+            disabled={pdfLoading || loading}
+            className="flex items-center gap-2 min-h-[44px] px-4 py-2 bg-dark-800 hover:bg-dark-700 border border-dark-700 hover:border-primary-500/50 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+          >
+            {pdfLoading
+              ? <RefreshCw className="w-4 h-4 animate-spin" />
+              : <Download className="w-4 h-4 text-primary-400" />}
+            {pdfLoading ? 'Gerando PDF...' : 'Baixar PDF'}
+          </button>
+
+          {tab === 'commissions' && (
+            <button
+              onClick={handleCopyWhatsApp}
+              disabled={waLoading || loading}
+              className="flex items-center gap-2 min-h-[44px] px-4 py-2 bg-dark-800 hover:bg-dark-700 border border-dark-700 hover:border-green-500/50 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+            >
+              {waLoading ? (
+                <RefreshCw className="w-4 h-4 animate-spin" />
+              ) : waCopied ? (
+                <Check className="w-4 h-4 text-green-400" />
+              ) : (
+                <MessageSquare className="w-4 h-4 text-green-400" />
+              )}
+              {waLoading ? 'Gerando...' : waCopied ? 'Copiado!' : 'Copiar resumo WhatsApp'}
+            </button>
+          )}
+        </div>
 
         {/* ── Conteúdo: Relatório de Comissões ── */}
         {tab === 'commissions' && (

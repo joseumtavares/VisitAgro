@@ -30,7 +30,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
 
 export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
   const admin = getAdmin();
-  const { workspace, userId } = getRequestContext(req);
+  const { workspace, userId, role } = getRequestContext(req);
   const body = await req.json();
 
   if (typeof body.version !== 'number') {
@@ -50,6 +50,16 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
 
   if (prevError || !prev) {
     return NextResponse.json({ error: 'Pedido não encontrado' }, { status: 404 });
+  }
+
+  // ── Guard L036-D: representative só pode alterar pedidos próprios ─────────
+  if (role === 'representative' && prev.user_id !== userId) {
+    await auditLog(
+      '[VENDA] Tentativa de PUT não autorizada por representative',
+      { order_id: params.id, workspace, attempted_by: userId },
+      userId
+    );
+    return NextResponse.json({ error: 'Não autorizado' }, { status: 403 });
   }
 
   const {
@@ -172,7 +182,27 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
 }
 
 export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
-  const { workspace, userId } = getRequestContext(req);
+  const { workspace, userId, role } = getRequestContext(req);
+
+  // ── Guard L036-D: representative só pode cancelar pedidos próprios ────────
+  if (role === 'representative') {
+    const { data: prev } = await getAdmin()
+      .from('orders')
+      .select('user_id')
+      .eq('id', params.id)
+      .eq('workspace', workspace)
+      .is('deleted_at', null)
+      .maybeSingle();
+
+    if (!prev || prev.user_id !== userId) {
+      await auditLog(
+        '[VENDA] Tentativa de DELETE não autorizada por representative',
+        { order_id: params.id, workspace, attempted_by: userId },
+        userId
+      );
+      return NextResponse.json({ error: 'Não autorizado' }, { status: 403 });
+    }
+  }
 
   const { error } = await getAdmin()
     .from('orders')

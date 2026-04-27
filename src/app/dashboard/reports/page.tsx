@@ -192,11 +192,14 @@ export default function ReportsPage() {
     }
   }, [tab, buildQs]);
 
-  // ── copiar resumo WhatsApp (apenas comissões por ora)
+  // ── copiar resumo WhatsApp — rota depende da tab ativa
   const handleCopyWhatsApp = useCallback(async () => {
     setWaLoading(true);
     try {
-      const res = await apiFetch(`/api/reports/rep-commissions/whatsapp${buildQs()}`);
+      const base = tab === 'commissions'
+        ? '/api/reports/rep-commissions/whatsapp'
+        : '/api/reports/sales-by-representative/whatsapp';
+      const res = await apiFetch(`${base}${buildQs()}`);
       const d   = await res.json().catch(() => ({}));
       if (!res.ok) { setError((d as any)?.error || 'Erro ao gerar resumo.'); return; }
       await navigator.clipboard.writeText((d as any).text ?? '');
@@ -207,7 +210,7 @@ export default function ReportsPage() {
     } finally {
       setWaLoading(false);
     }
-  }, [buildQs]);
+  }, [tab, buildQs]);
 
   // ── busca relatório de comissões
   const fetchCommissions = useCallback(async () => {
@@ -443,8 +446,7 @@ export default function ReportsPage() {
             {pdfLoading ? 'Gerando PDF...' : 'Baixar PDF'}
           </button>
 
-          {tab === 'commissions' && (
-            <button
+          <button
               onClick={handleCopyWhatsApp}
               disabled={waLoading || loading}
               className="flex items-center gap-2 min-h-[44px] px-4 py-2 bg-dark-800 hover:bg-dark-700 border border-dark-700 hover:border-green-500/50 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
@@ -458,7 +460,6 @@ export default function ReportsPage() {
               )}
               {waLoading ? 'Gerando...' : waCopied ? 'Copiado!' : 'Copiar resumo WhatsApp'}
             </button>
-          )}
         </div>
 
         {/* ── Conteúdo: Relatório de Comissões ── */}

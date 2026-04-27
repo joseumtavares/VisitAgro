@@ -2,6 +2,28 @@
 
 > Histórico organizado de mudanças relevantes do VisitAgro.
 
+## [L036-D] — 26/04/2026
+
+### 🔒 Guard de propriedade em orders/[id] + WhatsApp para vendas
+
+- `PUT /api/orders/[id]`: representative recebe 403 ao tentar alterar pedido alheio
+- `DELETE /api/orders/[id]`: idem para cancelamento de pedido alheio
+- Tentativas não autorizadas registradas via `auditLog`
+- `GET /api/reports/sales-by-representative/whatsapp`: resumo de vendas pronto para WhatsApp
+- Central de Relatórios: botão WhatsApp disponível nas duas tabs (Comissões e Vendas)
+- Zero alteração de schema
+- Fecha DT-REP-01 e DT-REP-05
+
+**Arquivos criados:**
+- `src/app/api/reports/sales-by-representative/whatsapp/route.ts`
+- `docs/lotes/L036-D_ETAPA_01_EXECUCAO.md`
+
+**Arquivos alterados:**
+- `src/app/api/orders/[id]/route.ts` (guard PUT + guard DELETE)
+- `src/app/dashboard/reports/page.tsx` (WhatsApp roteia por tab)
+
+---
+
 ## [L036-C] — 26/04/2026
 
 ### 📄 Exportação PDF e resumo WhatsApp — Central de Relatórios

@@ -2,6 +2,34 @@
 
 > Histórico organizado de mudanças relevantes do VisitAgro.
 
+## [L038] — 26/04/2026
+
+### 📱 Responsividade CRUD + Padrão Oficial Mobile-First
+
+- Criado padrão oficial mobile-first em `docs/ui/responsividade.md`
+- `AGENTES.md` seção 4.1 verificada — exige responsividade em novas páginas
+- CRUDs principais revisados para mobile:
+  - `clients/page.tsx` — cards mobile para tabela de 5 colunas; min-h-[44px] nos botões
+  - `products/page.tsx` — cards mobile para tabela de 8 colunas; min-h-[44px] nos botões
+  - `referrals/page.tsx` — cards mobile; formulário corrigido para grid-cols-1 sm:grid-cols-2; min-h-[44px]
+  - `pre-registrations-page.tsx` — cards mobile para tabela de 7 colunas; selects w-full no mobile; min-h-[44px]
+- Desktop 100% preservado em todas as páginas
+- Zero alteração de lógica, API, banco ou contratos
+
+**Arquivos criados:**
+- `docs/ui/responsividade.md`
+- `docs/patches/L038_responsividade_crud.md`
+
+**Arquivos alterados:**
+- `src/app/dashboard/clients/page.tsx`
+- `src/app/dashboard/products/page.tsx`
+- `src/app/dashboard/referrals/page.tsx`
+- `src/app/dashboard/pre-registrations/pre-registrations-page.tsx`
+- `docs/changelog.md`
+- `docs/index.md`
+
+---
+
 ## [L036-D] — 26/04/2026
 
 ### 🔒 Guard de propriedade em orders/[id] + WhatsApp para vendas

@@ -1,5 +1,5 @@
 'use client';
-// src/app/dashboard/products/page.tsx  (PATCH V2 + L038 responsividade)
+// src/app/dashboard/products/page.tsx  (PATCH V2)
 // CRUD de produtos — inclui produto composto (v0.9.5)
 //
 // GARANTIAS:
@@ -8,7 +8,6 @@
 //   - preview de custo calculado localmente para feedback imediato
 //   - validações locais antes de enviar ao backend
 //   - mensagens de erro do backend exibidas diretamente ao usuário
-// L038: cards mobile adicionados; lógica 100% preservada
 
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
@@ -20,11 +19,13 @@ import type { Product, ProductComponent } from '@/types';
 
 interface Category { id: string; name: string; }
 
+// Tipo local para item de composição no formulário
 interface ComponentFormItem {
   component_product_id: string;
   quantity: number;
 }
 
+// Tipo local do formulário (extends Product com components tipados)
 type ProductForm = Omit<Partial<Product>, 'components'> & {
   components: ComponentFormItem[];
 };
@@ -42,6 +43,7 @@ const FORM_EMPTY: ProductForm = {
 const cur = (v: number) =>
   Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
+// Normaliza is_composite para boolean — seguro para dados antigos
 const normalizeProduct = (p: any): Product => ({
   ...p,
   is_composite: Boolean(p.is_composite),
@@ -70,6 +72,8 @@ export default function ProductsPage() {
     if (!isAuthenticated) router.push('/auth/login');
   }, [hydrated, isAuthenticated, router]);
 
+  // ── Carregar produtos e categorias ───────────────────────
+
   const load = useCallback(async () => {
     setLoading(true);
     try {
@@ -88,6 +92,8 @@ export default function ProductsPage() {
 
   useEffect(() => { load(); }, [load]);
 
+  // ── Preview de custo calculado ────────────────────────────
+
   const recalcCostPreview = useCallback(
     (comps: ComponentFormItem[]) => {
       const total = comps.reduce((acc, comp) => {
@@ -100,6 +106,8 @@ export default function ProductsPage() {
     },
     [products]
   );
+
+  // ── Modal helpers ─────────────────────────────────────────
 
   const openNew = () => {
     setEditing(null);
@@ -142,6 +150,8 @@ export default function ProductsPage() {
   const f = <K extends keyof ProductForm>(k: K, v: ProductForm[K]) =>
     setForm(prev => ({ ...prev, [k]: v }));
 
+  // ── Salvar ────────────────────────────────────────────────
+
   const save = async () => {
     setError('');
 
@@ -183,6 +193,8 @@ export default function ProductsPage() {
     }
   };
 
+  // ── Desativar ─────────────────────────────────────────────
+
   const remove = async (id: string, isComposite: boolean) => {
     const msg = isComposite
       ? 'Desativar este produto composto? Os vínculos de composição serão removidos.'
@@ -199,6 +211,8 @@ export default function ProductsPage() {
     await load();
   };
 
+  // ── Filtro ────────────────────────────────────────────────
+
   const filtered = products.filter(p =>
     p.name.toLowerCase().includes(search.toLowerCase()) ||
     (p.model ?? '').toLowerCase().includes(search.toLowerCase()) ||
@@ -208,12 +222,15 @@ export default function ProductsPage() {
   const catName = (id?: string | null) =>
     categories.find(c => c.id === id)?.name ?? '—';
 
+  // Produtos elegíveis como componente: ativos, não compostos, não o produto sendo editado
   const eligibleComponents = products.filter(
     p => !p.is_composite && p.id !== editing?.id && p.active
   );
 
   const inp =
     'w-full bg-dark-900 border border-dark-700 rounded-lg px-3 py-2 text-white text-sm outline-none focus:ring-2 focus:ring-primary-500';
+
+  // ── Render ────────────────────────────────────────────────
 
   return (
     <DashboardShell>
@@ -225,10 +242,9 @@ export default function ProductsPage() {
             <h1 className="text-2xl font-bold text-white">Produtos</h1>
             <p className="text-dark-400 text-sm mt-1">{products.length} cadastrados</p>
           </div>
-          {/* L038: min-h-[44px] */}
           <button
             onClick={openNew}
-            className="flex items-center justify-center gap-2 bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg transition-colors text-sm font-medium min-h-[44px]"
+            className="flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg transition-colors text-sm font-medium"
           >
             <Plus className="w-4 h-4" /> Novo Produto
           </button>
@@ -251,7 +267,7 @@ export default function ProductsPage() {
           />
         </div>
 
-        {/* Lista */}
+        {/* Tabela */}
         {loading ? (
           <div className="text-center py-12 text-dark-400">Carregando...</div>
         ) : filtered.length === 0 ? (
@@ -263,143 +279,89 @@ export default function ProductsPage() {
             </button>
           </div>
         ) : (
-          <>
-            {/* L038: Cards mobile — visíveis apenas abaixo de sm */}
-            <div className="sm:hidden space-y-3">
-              {filtered.map(p => (
-                <div key={p.id} className="bg-dark-800 rounded-xl border border-dark-700 p-4 space-y-3">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-white font-medium text-sm">{p.name}</span>
-                        {p.is_composite === true && (
-                          <span className="inline-flex items-center gap-1 text-xs bg-cyan-500/15 text-cyan-400 border border-cyan-500/30 px-1.5 py-0.5 rounded-full">
-                            <Layers className="w-3 h-3" />Composto
-                          </span>
-                        )}
-                      </div>
-                      {p.model && <div className="text-dark-500 text-xs mt-0.5">Modelo: {p.model}</div>}
-                      {p.sku && <div className="text-dark-500 text-xs font-mono">{p.sku}</div>}
-                    </div>
-                    <div className="shrink-0 text-right">
-                      <div className="text-white font-medium text-sm">{cur(p.unit_price ?? 0)}</div>
-                      <div className={`text-xs font-medium ${Number(p.stock_qty) <= 0 ? 'text-red-400' : Number(p.stock_qty) < 10 ? 'text-yellow-400' : 'text-green-400'}`}>
-                        {p.stock_qty} {p.unit}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="inline-flex items-center gap-1 text-dark-300">
-                      <Tag className="w-3 h-3" />{catName(p.category_id)}
-                    </span>
-                    {p.rep_commission_pct ? (
-                      <span className="text-dark-400">{p.rep_commission_pct}% rep.</span>
-                    ) : null}
-                  </div>
-                  {/* L038: botões de ação com min-h-[44px] */}
-                  <div className="flex gap-2 pt-1">
-                    <button
-                      onClick={() => openEdit(p)}
-                      className="flex-1 flex items-center justify-center gap-1 min-h-[44px] bg-dark-700 hover:bg-dark-600 text-white text-xs rounded-lg transition-colors"
-                    >
-                      <Pencil className="w-3.5 h-3.5" />Editar
-                    </button>
-                    <button
-                      onClick={() => remove(p.id, p.is_composite === true)}
-                      className="flex-1 flex items-center justify-center gap-1 min-h-[44px] bg-dark-700 hover:bg-red-900/40 text-dark-400 hover:text-red-400 text-xs rounded-lg transition-colors"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />Desativar
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* L038: Tabela desktop — oculta no mobile */}
-            <div className="hidden sm:block bg-dark-800 rounded-xl border border-dark-700 overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b border-dark-700 text-dark-400 text-xs uppercase">
-                      <th className="text-left px-4 py-3">Nome / Modelo</th>
-                      <th className="text-left px-4 py-3">Categoria</th>
-                      <th className="text-left px-4 py-3">SKU</th>
-                      <th className="text-right px-4 py-3">Venda</th>
-                      <th className="text-right px-4 py-3">Custo</th>
-                      <th className="text-right px-4 py-3">Estoque</th>
-                      <th className="text-right px-4 py-3">Comissão Rep.</th>
-                      <th className="text-right px-4 py-3">Ações</th>
+          <div className="bg-dark-800 rounded-xl border border-dark-700 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-dark-700 text-dark-400 text-xs uppercase">
+                    <th className="text-left px-4 py-3">Nome / Modelo</th>
+                    <th className="text-left px-4 py-3">Categoria</th>
+                    <th className="text-left px-4 py-3">SKU</th>
+                    <th className="text-right px-4 py-3">Venda</th>
+                    <th className="text-right px-4 py-3">Custo</th>
+                    <th className="text-right px-4 py-3">Estoque</th>
+                    <th className="text-right px-4 py-3">Comissão Rep.</th>
+                    <th className="text-right px-4 py-3">Ações</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-dark-700">
+                  {filtered.map(p => (
+                    <tr key={p.id} className="hover:bg-dark-700/30 transition-colors">
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-white font-medium text-sm">{p.name}</span>
+                          {/* Badge só renderiza se is_composite for exatamente true */}
+                          {p.is_composite === true && (
+                            <span className="inline-flex items-center gap-1 text-xs bg-cyan-500/15 text-cyan-400 border border-cyan-500/30 px-1.5 py-0.5 rounded-full">
+                              <Layers className="w-3 h-3" />Composto
+                            </span>
+                          )}
+                        </div>
+                        {p.model && <div className="text-dark-500 text-xs mt-0.5">Modelo: {p.model}</div>}
+                        {p.color && <div className="text-dark-500 text-xs">Cor: {p.color}</div>}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="inline-flex items-center gap-1 text-xs text-dark-300">
+                          <Tag className="w-3 h-3" />{catName(p.category_id)}
+                        </span>
+                      </td>                      <td className="px-4 py-3 text-xs text-dark-400 font-mono">{p.sku || '—'}</td>
+                      <td className="px-4 py-3 text-right text-sm text-white font-medium">
+                        {cur(p.unit_price ?? 0)}
+                      </td>
+                      <td className="px-4 py-3 text-right text-xs">
+                        <span className="text-dark-400">
+                          {p.cost_price != null ? cur(p.cost_price) : '—'}
+                        </span>
+                        {p.is_composite === true && p.cost_price != null ? (
+                          <div className="text-cyan-500/60 text-xs">calculado</div>
+                        ) : null}
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <span className={`text-sm font-medium ${
+                          Number(p.stock_qty) <= 0 ? 'text-red-400'
+                          : Number(p.stock_qty) < 10 ? 'text-yellow-400'
+                          : 'text-green-400'
+                        }`}>
+                          {p.stock_qty} {p.unit}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-right text-xs text-dark-400">
+                        {p.rep_commission_pct ? `${p.rep_commission_pct}%` : '—'}
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            onClick={() => openEdit(p)}
+                            className="text-dark-400 hover:text-white p-1.5 rounded hover:bg-dark-700 transition-colors"
+                            title="Editar"
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => remove(p.id, p.is_composite === true)}
+                            className="text-dark-400 hover:text-red-400 p-1.5 rounded hover:bg-dark-700 transition-colors"
+                            title="Desativar"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody className="divide-y divide-dark-700">
-                    {filtered.map(p => (
-                      <tr key={p.id} className="hover:bg-dark-700/30 transition-colors">
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="text-white font-medium text-sm">{p.name}</span>
-                            {p.is_composite === true && (
-                              <span className="inline-flex items-center gap-1 text-xs bg-cyan-500/15 text-cyan-400 border border-cyan-500/30 px-1.5 py-0.5 rounded-full">
-                                <Layers className="w-3 h-3" />Composto
-                              </span>
-                            )}
-                          </div>
-                          {p.model && <div className="text-dark-500 text-xs mt-0.5">Modelo: {p.model}</div>}
-                          {p.color && <div className="text-dark-500 text-xs">Cor: {p.color}</div>}
-                        </td>
-                        <td className="px-4 py-3">
-                          <span className="inline-flex items-center gap-1 text-xs text-dark-300">
-                            <Tag className="w-3 h-3" />{catName(p.category_id)}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-xs text-dark-400 font-mono">{p.sku || '—'}</td>
-                        <td className="px-4 py-3 text-right text-sm text-white font-medium">
-                          {cur(p.unit_price ?? 0)}
-                        </td>
-                        <td className="px-4 py-3 text-right text-xs">
-                          <span className="text-dark-400">
-                            {p.cost_price != null ? cur(p.cost_price) : '—'}
-                          </span>
-                          {p.is_composite === true && p.cost_price != null ? (
-                            <div className="text-cyan-500/60 text-xs">calculado</div>
-                          ) : null}
-                        </td>
-                        <td className="px-4 py-3 text-right">
-                          <span className={`text-sm font-medium ${
-                            Number(p.stock_qty) <= 0 ? 'text-red-400'
-                            : Number(p.stock_qty) < 10 ? 'text-yellow-400'
-                            : 'text-green-400'
-                          }`}>
-                            {p.stock_qty} {p.unit}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-right text-xs text-dark-400">
-                          {p.rep_commission_pct ? `${p.rep_commission_pct}%` : '—'}
-                        </td>
-                        <td className="px-4 py-3">
-                          <div className="flex items-center justify-end gap-2">
-                            <button
-                              onClick={() => openEdit(p)}
-                              className="text-dark-400 hover:text-white p-1.5 rounded hover:bg-dark-700 transition-colors"
-                              title="Editar"
-                            >
-                              <Pencil className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={() => remove(p.id, p.is_composite === true)}
-                              className="text-dark-400 hover:text-red-400 p-1.5 rounded hover:bg-dark-700 transition-colors"
-                              title="Desativar"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                  ))}
+                </tbody>
+              </table>
             </div>
-          </>
+          </div>
         )}
       </div>
 
@@ -420,8 +382,7 @@ export default function ProductsPage() {
                   </span>
                 )}
               </div>
-              {/* L038: área de toque adequada no botão fechar */}
-              <button onClick={() => setShowModal(false)} className="text-dark-400 hover:text-white text-xl min-w-[44px] min-h-[44px] flex items-center justify-center">✕</button>
+              <button onClick={() => setShowModal(false)} className="text-dark-400 hover:text-white text-xl">✕</button>
             </div>
 
             {loadingEdit ? (
@@ -644,6 +605,7 @@ export default function ProductsPage() {
                         );
                       })}
 
+                      {/* Preview de custo total */}
                       {compCostPreview !== null && form.components.length > 0 && (
                         <div className="flex items-center justify-between pt-3 border-t border-dark-700">
                           <span className="text-xs text-dark-400">Custo calculado (Σ componentes):</span>
@@ -651,6 +613,7 @@ export default function ProductsPage() {
                         </div>
                       )}
 
+                      {/* Aviso sobre comissão */}
                       <div className="mt-2 pt-3 border-t border-dark-700">
                         <p className="text-xs text-cyan-400 flex items-start gap-1.5">
                           <span className="flex-shrink-0 mt-0.5">ℹ️</span>
@@ -694,16 +657,16 @@ export default function ProductsPage() {
               </div>
             )}
 
-            {/* Footer — L038: min-h-[44px] nos botões */}
+            {/* Footer */}
             {!loadingEdit && (
-              <div className="p-6 border-t border-dark-700 flex flex-col sm:flex-row gap-3 justify-end sticky bottom-0 bg-dark-800">
-                <button onClick={() => setShowModal(false)} className="px-4 py-2 text-dark-400 hover:text-white text-sm min-h-[44px]">
+              <div className="p-6 border-t border-dark-700 flex gap-3 justify-end sticky bottom-0 bg-dark-800">
+                <button onClick={() => setShowModal(false)} className="px-4 py-2 text-dark-400 hover:text-white text-sm">
                   Cancelar
                 </button>
                 <button
                   onClick={save}
                   disabled={saving}
-                  className="px-6 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg text-sm font-medium disabled:opacity-50 min-h-[44px]"
+                  className="px-6 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg text-sm font-medium disabled:opacity-50"
                 >
                   {saving ? 'Salvando...' : editing ? 'Salvar alterações' : 'Cadastrar'}
                 </button>

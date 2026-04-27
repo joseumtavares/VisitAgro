@@ -50,11 +50,11 @@ export default function ClientsPage() {
   const [cepLoading,setCepLoading]=useState(false);
   const [geoLoading,setGeoLoading]=useState(false);
   const [geoError,setGeoError]=useState('');
-  // ── modal do mapa picker ────────────────────────────
+  // ── NOVO: modal do mapa picker ────────────────────────────
   const [showMapPicker, setShowMapPicker] = useState(false);
   const [copiedCoords, setCopiedCoords] = useState(false);
 
-  useEffect(()=>{if (!hydrated) return; if(!isAuthenticated)router.push('/auth/login');},[isAuthenticated,router,hydrated]);
+  useEffect(()=>{if (!hydrated) return; if(!isAuthenticated)router.push('/auth/login');},[isAuthenticated,router]);
 
   const load=useCallback(async()=>{
     setLoading(true);
@@ -127,109 +127,58 @@ export default function ClientsPage() {
   return (
     <DashboardShell>
       <div className="space-y-6">
-        {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div><h1 className="text-2xl font-bold text-white">Clientes</h1>
             <p className="text-dark-400 text-sm mt-1">{clients.length} cadastrados</p></div>
-          {/* L038: botão com min-h-[44px] para toque móvel */}
-          <button onClick={openNew} className="flex items-center justify-center gap-2 bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors min-h-[44px]">
+          <button onClick={openNew} className="flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
             <Plus className="w-4 h-4"/>Novo Cliente</button>
         </div>
-
-        {/* Filtros — L038: empilha no mobile */}
         <div className="flex flex-col sm:flex-row gap-3">
           <div className="relative flex-1"><Search className="absolute left-3 top-2.5 w-4 h-4 text-dark-500"/>
             <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar nome, telefone ou cidade..."
               className="w-full bg-dark-800 border border-dark-700 rounded-lg py-2 pl-9 pr-4 text-white text-sm outline-none focus:ring-2 focus:ring-primary-500"/></div>
           <select value={filterStatus} onChange={e=>setFilter(e.target.value as any)}
-            className="w-full sm:w-auto bg-dark-800 border border-dark-700 rounded-lg px-3 py-2 text-white text-sm outline-none focus:ring-2 focus:ring-primary-500">
+            className="bg-dark-800 border border-dark-700 rounded-lg px-3 py-2 text-white text-sm outline-none focus:ring-2 focus:ring-primary-500">
             <option value="todos">Todos os status</option>
             {(Object.keys(STATUS_LABELS) as ClientStatus[]).map(s=><option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
           </select>
         </div>
-
-        {loading ? (
-          <div className="text-center py-12 text-dark-400">Carregando...</div>
-        ) : filtered.length === 0 ? (
-          <div className="text-center py-12 text-dark-400">
+        {loading?<div className="text-center py-12 text-dark-400">Carregando...</div>
+        :filtered.length===0?<div className="text-center py-12 text-dark-400">
             <p>Nenhum cliente encontrado</p>
             <button onClick={openNew} className="mt-3 text-primary-400 hover:text-primary-300 text-sm">+ Cadastrar primeiro cliente</button>
           </div>
-        ) : (
-          <>
-            {/* L038: Cards mobile — visíveis apenas no mobile (< sm) */}
-            <div className="sm:hidden space-y-3">
-              {filtered.map(c => (
-                <div key={c.id} className="bg-dark-800 rounded-xl border border-dark-700 p-4 space-y-3">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <div className="text-white font-medium text-sm truncate">{c.name}</div>
-                      {c.category && <div className="text-dark-500 text-xs mt-0.5">{c.category}</div>}
-                    </div>
-                    <span className={`inline-flex shrink-0 px-2 py-0.5 rounded-full text-xs font-medium border ${STATUS_BADGE[c.status]}`}>
-                      {STATUS_LABELS[c.status]}
-                    </span>
-                  </div>
-                  <div className="space-y-1">
-                    {c.tel && <a href={`tel:${c.tel}`} className="flex items-center gap-1 text-xs text-dark-300 hover:text-white"><Phone className="w-3 h-3 shrink-0"/>{c.tel}</a>}
-                    {c.email && <a href={`mailto:${c.email}`} className="flex items-center gap-1 text-xs text-dark-300 hover:text-white truncate"><Mail className="w-3 h-3 shrink-0"/>{c.email}</a>}
-                    {(c.city || c.state) && <div className="text-xs text-dark-400">{[c.city,c.state].filter(Boolean).join(' — ')}</div>}
-                    {(c.maps_link||(c.lat&&c.lng)) && (
-                      <a href={c.maps_link??`https://www.google.com/maps?q=${c.lat},${c.lng}`} target="_blank" rel="noopener noreferrer"
-                        className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300">
-                        <MapPin className="w-3 h-3"/>Ver no mapa<ExternalLink className="w-3 h-3"/>
-                      </a>
-                    )}
-                  </div>
-                  {/* L038: botões de ação com min-h-[44px] */}
-                  <div className="flex gap-2 pt-1">
-                    <button onClick={()=>openEdit(c)}
-                      className="flex-1 flex items-center justify-center gap-1 min-h-[44px] bg-dark-700 hover:bg-dark-600 text-white text-xs rounded-lg transition-colors">
-                      <Pencil className="w-3.5 h-3.5"/>Editar
-                    </button>
-                    <button onClick={()=>remove(c.id)}
-                      className="flex-1 flex items-center justify-center gap-1 min-h-[44px] bg-dark-700 hover:bg-red-900/40 text-dark-400 hover:text-red-400 text-xs rounded-lg transition-colors">
-                      <Trash2 className="w-3.5 h-3.5"/>Remover
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* L038: Tabela desktop — oculta no mobile */}
-            <div className="hidden sm:block bg-dark-800 rounded-xl border border-dark-700 overflow-hidden">
-              <div className="overflow-x-auto"><table className="w-full">
-                <thead><tr className="border-b border-dark-700 text-dark-400 text-xs uppercase">
-                  <th className="text-left px-4 py-3">Nome</th><th className="text-left px-4 py-3">Status</th>
-                  <th className="text-left px-4 py-3">Contato</th><th className="text-left px-4 py-3">Localização</th>
-                  <th className="text-right px-4 py-3">Ações</th></tr></thead>
-                <tbody className="divide-y divide-dark-700">
-                  {filtered.map(c=>(
-                    <tr key={c.id} className="hover:bg-dark-700/30 transition-colors">
-                      <td className="px-4 py-3"><div className="text-white font-medium text-sm">{c.name}</div>
-                        {c.category&&<div className="text-dark-500 text-xs mt-0.5">{c.category}</div>}</td>
-                      <td className="px-4 py-3"><span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium border ${STATUS_BADGE[c.status]}`}>{STATUS_LABELS[c.status]}</span></td>
-                      <td className="px-4 py-3"><div className="space-y-0.5">
-                        {c.tel&&<a href={`tel:${c.tel}`} className="flex items-center gap-1 text-xs text-dark-300 hover:text-white"><Phone className="w-3 h-3"/>{c.tel}</a>}
-                        {c.tel2&&<a href={`tel:${c.tel2}`} className="flex items-center gap-1 text-xs text-dark-400 hover:text-white"><Phone className="w-3 h-3"/>{c.tel2}</a>}
-                        {c.email&&<a href={`mailto:${c.email}`} className="flex items-center gap-1 text-xs text-dark-300 hover:text-white truncate max-w-[160px]"><Mail className="w-3 h-3"/>{c.email}</a>}
-                        {!c.tel&&!c.email&&<span className="text-dark-600 text-xs">—</span>}
-                      </div></td>
-                      <td className="px-4 py-3"><div className="text-xs text-dark-300">{[c.city,c.state].filter(Boolean).join(' — ')||'—'}</div>
-                        {(c.maps_link||(c.lat&&c.lng))&&<a href={c.maps_link??`https://www.google.com/maps?q=${c.lat},${c.lng}`} target="_blank" rel="noopener noreferrer"
-                          className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 mt-0.5"><MapPin className="w-3 h-3"/>Ver no mapa<ExternalLink className="w-3 h-3"/></a>}
-                      </td>
-                      <td className="px-4 py-3"><div className="flex items-center justify-end gap-2">
-                        <button onClick={()=>openEdit(c)} className="text-dark-400 hover:text-white p-1.5 rounded hover:bg-dark-700 transition-colors"><Pencil className="w-4 h-4"/></button>
-                        <button onClick={()=>remove(c.id)} className="text-dark-400 hover:text-red-400 p-1.5 rounded hover:bg-dark-700 transition-colors"><Trash2 className="w-4 h-4"/></button>
-                      </div></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table></div>
-            </div>
-          </>
-        )}
+        :<div className="bg-dark-800 rounded-xl border border-dark-700 overflow-hidden">
+            <div className="overflow-x-auto"><table className="w-full">
+              <thead><tr className="border-b border-dark-700 text-dark-400 text-xs uppercase">
+                <th className="text-left px-4 py-3">Nome</th><th className="text-left px-4 py-3">Status</th>
+                <th className="text-left px-4 py-3">Contato</th><th className="text-left px-4 py-3">Localização</th>
+                <th className="text-right px-4 py-3">Ações</th></tr></thead>
+              <tbody className="divide-y divide-dark-700">
+                {filtered.map(c=>(
+                  <tr key={c.id} className="hover:bg-dark-700/30 transition-colors">
+                    <td className="px-4 py-3"><div className="text-white font-medium text-sm">{c.name}</div>
+                      {c.category&&<div className="text-dark-500 text-xs mt-0.5">{c.category}</div>}</td>
+                    <td className="px-4 py-3"><span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium border ${STATUS_BADGE[c.status]}`}>{STATUS_LABELS[c.status]}</span></td>
+                    <td className="px-4 py-3"><div className="space-y-0.5">
+                      {c.tel&&<a href={`tel:${c.tel}`} className="flex items-center gap-1 text-xs text-dark-300 hover:text-white"><Phone className="w-3 h-3"/>{c.tel}</a>}
+                      {c.tel2&&<a href={`tel:${c.tel2}`} className="flex items-center gap-1 text-xs text-dark-400 hover:text-white"><Phone className="w-3 h-3"/>{c.tel2}</a>}
+                      {c.email&&<a href={`mailto:${c.email}`} className="flex items-center gap-1 text-xs text-dark-300 hover:text-white truncate max-w-[160px]"><Mail className="w-3 h-3"/>{c.email}</a>}
+                      {!c.tel&&!c.email&&<span className="text-dark-600 text-xs">—</span>}
+                    </div></td>
+                    <td className="px-4 py-3"><div className="text-xs text-dark-300">{[c.city,c.state].filter(Boolean).join(' — ')||'—'}</div>
+                      {(c.maps_link||(c.lat&&c.lng))&&<a href={c.maps_link??`https://www.google.com/maps?q=${c.lat},${c.lng}`} target="_blank" rel="noopener noreferrer"
+                        className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 mt-0.5"><MapPin className="w-3 h-3"/>Ver no mapa<ExternalLink className="w-3 h-3"/></a>}
+                    </td>
+                    <td className="px-4 py-3"><div className="flex items-center justify-end gap-2">
+                      <button onClick={()=>openEdit(c)} className="text-dark-400 hover:text-white p-1.5 rounded hover:bg-dark-700 transition-colors"><Pencil className="w-4 h-4"/></button>
+                      <button onClick={()=>remove(c.id)} className="text-dark-400 hover:text-red-400 p-1.5 rounded hover:bg-dark-700 transition-colors"><Trash2 className="w-4 h-4"/></button>
+                    </div></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table></div>
+          </div>}
       </div>
 
       {/* ── MODAL DE CADASTRO/EDIÇÃO ── */}
@@ -238,12 +187,10 @@ export default function ClientsPage() {
           <div className="bg-dark-800 rounded-xl border border-dark-700 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b border-dark-700 flex justify-between items-center sticky top-0 bg-dark-800">
               <h2 className="text-white font-semibold text-lg">{editing?'Editar Cliente':'Novo Cliente'}</h2>
-              {/* L038: botão fechar com área de toque adequada */}
-              <button onClick={()=>setShowModal(false)} className="text-dark-400 hover:text-white text-xl min-w-[44px] min-h-[44px] flex items-center justify-center">✕</button>
+              <button onClick={()=>setShowModal(false)} className="text-dark-400 hover:text-white text-xl">✕</button>
             </div>
             <div className="p-6 space-y-4">
               {error&&<div className="bg-red-500/10 border border-red-500 text-red-400 text-sm px-3 py-2 rounded-lg">{error}</div>}
-              {/* L038: formulário em coluna única no mobile (grid-cols-1 sm:grid-cols-2 já estava correto) */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="sm:col-span-2"><label className="block text-xs text-dark-400 mb-1">Nome *</label>
                   <input value={form.name??''} onChange={e=>f('name',e.target.value)}
@@ -272,7 +219,7 @@ export default function ClientsPage() {
                     <input value={form.zip_code??''} onChange={e=>f('zip_code',e.target.value)} placeholder="88900-000"
                       className="flex-1 bg-dark-900 border border-dark-700 rounded-lg px-3 py-2 text-white text-sm outline-none focus:ring-2 focus:ring-primary-500"/>
                     <button onClick={lookupCep} disabled={cepLoading}
-                      className="px-3 py-2 bg-primary-600 hover:bg-primary-700 text-white text-xs rounded-lg disabled:opacity-50 whitespace-nowrap min-h-[44px]">
+                      className="px-3 py-2 bg-primary-600 hover:bg-primary-700 text-white text-xs rounded-lg disabled:opacity-50 whitespace-nowrap">
                       {cepLoading?'…':'Buscar'}</button>
                   </div></div>
                 <div><label className="block text-xs text-dark-400 mb-1">Estado</label>
@@ -285,7 +232,7 @@ export default function ClientsPage() {
                   <input value={form.city??''} onChange={e=>f('city',e.target.value)}
                     className="w-full bg-dark-900 border border-dark-700 rounded-lg px-3 py-2 text-white text-sm outline-none focus:ring-2 focus:ring-primary-500"/></div>
 
-                {/* ── SEÇÃO DE LOCALIZAÇÃO ── */}
+                {/* ── SEÇÃO DE LOCALIZAÇÃO ────────────────────────────── */}
                 <div className="sm:col-span-2">
                   <div className="border-t border-dark-700 pt-4">
                     <div className="flex items-center justify-between mb-3">
@@ -294,7 +241,7 @@ export default function ClientsPage() {
                       </label>
                     </div>
 
-                    {/* Busca por endereço (Nominatim) */}
+                    {/* Busca por endereço (Nominatim) — preservada do fluxo original */}
                     <div className="mb-3">
                       <label className="block text-xs text-dark-400 mb-1">
                         Buscar Endereço no Mapa <span className="text-dark-500">(Nominatim)</span>
@@ -332,18 +279,18 @@ export default function ClientsPage() {
                             finally{setGeoLoading(false);}
                           }}
                           disabled={geoLoading}
-                          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium disabled:opacity-50 whitespace-nowrap min-h-[44px]">
+                          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium disabled:opacity-50 whitespace-nowrap">
                           {geoLoading?'⏳':'📍 Buscar'}
                         </button>
                       </div>
                       {geoError&&<p className="text-red-400 text-xs mt-1">{geoError}</p>}
                     </div>
 
-                    {/* Botão para abrir o mapa picker */}
+                    {/* ── NOVO: Botão para abrir o mapa picker ── */}
                     <button
                       type="button"
                       onClick={() => setShowMapPicker(true)}
-                      className="w-full flex items-center justify-center gap-2 bg-dark-700 hover:bg-dark-600 border border-dark-600 hover:border-primary-500 text-white px-4 py-3 rounded-lg text-sm font-medium transition-all group min-h-[44px]"
+                      className="w-full flex items-center justify-center gap-2 bg-dark-700 hover:bg-dark-600 border border-dark-600 hover:border-primary-500 text-white px-4 py-3 rounded-lg text-sm font-medium transition-all group"
                     >
                       <MapPin className="w-4 h-4 text-primary-400 group-hover:scale-110 transition-transform" />
                       {form.lat && form.lng
@@ -351,7 +298,7 @@ export default function ClientsPage() {
                         : '🗺️ Selecionar localização no mapa'}
                     </button>
 
-                    {/* Card de localização confirmada */}
+                    {/* ── NOVO: Card de localização confirmada ── */}
                     {form.lat && form.lng && (
                       <div className="mt-3 bg-dark-900 border border-green-500/30 rounded-lg p-4">
                         <div className="flex items-start justify-between gap-3">
@@ -366,13 +313,14 @@ export default function ClientsPage() {
                               </p>
                             </div>
                           </div>
-                          <div className="flex items-center gap-1.5 flex-shrink-0 flex-wrap">
+                          {/* Botões do card */}
+                          <div className="flex items-center gap-1.5 flex-shrink-0">
                             <a
                               href={form.maps_link ?? `https://www.google.com/maps?q=${form.lat},${form.lng}`}
                               target="_blank"
                               rel="noopener noreferrer"
                               title="Abrir no Google Maps"
-                              className="flex items-center gap-1 px-2.5 py-1.5 bg-blue-600/20 hover:bg-blue-600/40 border border-blue-500/30 text-blue-400 rounded-lg text-xs transition-colors min-h-[36px]"
+                              className="flex items-center gap-1 px-2.5 py-1.5 bg-blue-600/20 hover:bg-blue-600/40 border border-blue-500/30 text-blue-400 rounded-lg text-xs transition-colors"
                             >
                               <ExternalLink className="w-3 h-3" />
                               Maps
@@ -381,7 +329,7 @@ export default function ClientsPage() {
                               type="button"
                               onClick={copyCoords}
                               title="Copiar coordenadas"
-                              className="flex items-center gap-1 px-2.5 py-1.5 bg-dark-700 hover:bg-dark-600 border border-dark-600 text-dark-300 hover:text-white rounded-lg text-xs transition-colors min-h-[36px]"
+                              className="flex items-center gap-1 px-2.5 py-1.5 bg-dark-700 hover:bg-dark-600 border border-dark-600 text-dark-300 hover:text-white rounded-lg text-xs transition-colors"
                             >
                               {copiedCoords
                                 ? <><CheckCircle className="w-3 h-3 text-green-400" /><span className="text-green-400">Copiado</span></>
@@ -392,7 +340,7 @@ export default function ClientsPage() {
                               type="button"
                               onClick={() => setShowMapPicker(true)}
                               title="Editar localização"
-                              className="flex items-center gap-1 px-2.5 py-1.5 bg-dark-700 hover:bg-dark-600 border border-dark-600 text-dark-300 hover:text-white rounded-lg text-xs transition-colors min-h-[36px]"
+                              className="flex items-center gap-1 px-2.5 py-1.5 bg-dark-700 hover:bg-dark-600 border border-dark-600 text-dark-300 hover:text-white rounded-lg text-xs transition-colors"
                             >
                               <Pencil className="w-3 h-3" />
                               Editar
@@ -402,8 +350,8 @@ export default function ClientsPage() {
                       </div>
                     )}
 
-                    {/* Campos manuais de lat/lng/maps_link */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
+                    {/* Campos manuais de lat/lng/maps_link — preservados do original */}
+                    <div className="grid grid-cols-2 gap-3 mt-3">
                       <div>
                         <label className="block text-xs text-dark-400 mb-1">Latitude</label>
                         <input value={form.lat??''} onChange={e=>f('lat',parseFloat(e.target.value)||null)} type="number" step="any" placeholder="-28.935"
@@ -428,11 +376,10 @@ export default function ClientsPage() {
                     className="w-full bg-dark-900 border border-dark-700 rounded-lg px-3 py-2 text-white text-sm outline-none focus:ring-2 focus:ring-primary-500 resize-none"/></div>
               </div>
             </div>
-            {/* L038: footer do modal com botões min-h-[44px] */}
-            <div className="p-6 border-t border-dark-700 flex flex-col sm:flex-row gap-3 justify-end sticky bottom-0 bg-dark-800">
-              <button onClick={()=>setShowModal(false)} className="px-4 py-2 text-dark-400 hover:text-white text-sm min-h-[44px]">Cancelar</button>
+            <div className="p-6 border-t border-dark-700 flex gap-3 justify-end sticky bottom-0 bg-dark-800">
+              <button onClick={()=>setShowModal(false)} className="px-4 py-2 text-dark-400 hover:text-white text-sm">Cancelar</button>
               <button onClick={save} disabled={saving}
-                className="px-6 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg text-sm font-medium disabled:opacity-50 min-h-[44px]">
+                className="px-6 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg text-sm font-medium disabled:opacity-50">
                 {saving?'Salvando...':editing?'Salvar alterações':'Cadastrar'}</button>
             </div>
           </div>
@@ -445,6 +392,7 @@ export default function ClientsPage() {
           className="fixed inset-0 z-[60] bg-dark-950"
           style={{ display: 'flex', flexDirection: 'column' }}
         >
+          {/* Header do modal do mapa */}
           <div
             style={{
               display: 'flex',
@@ -472,14 +420,13 @@ export default function ClientsPage() {
                 cursor: 'pointer',
                 padding: '4px 8px',
                 borderRadius: 6,
-                minWidth: 44,
-                minHeight: 44,
               }}
             >
               ✕
             </button>
           </div>
 
+          {/* Instrução */}
           <div
             style={{
               background: '#0f172a',
@@ -493,6 +440,7 @@ export default function ClientsPage() {
             Clique no mapa ou arraste o marcador para definir a localização. Use 📡 para detectar sua posição atual.
           </div>
 
+          {/* Mapa ocupando o restante da tela */}
           <div style={{ flex: 1, overflow: 'hidden' }}>
             <LeafletProvider>
               <GpsPickerMap

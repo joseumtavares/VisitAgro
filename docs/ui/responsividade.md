@@ -62,13 +62,44 @@ Este documento é **obrigatório** para qualquer implementação UI/UX.
 
 ### ✅ Obrigatório
 
-Mobile:
-- usar **cards**
-OU
-- scroll horizontal controlado
+**Opção A — Cards mobile (recomendado para tabelas com 4+ colunas):**
 
-Desktop:
-- manter tabela tradicional
+```tsx
+{/* Mobile: cards */}
+<div className="sm:hidden space-y-3">
+  {items.map(item => (
+    <div key={item.id} className="bg-dark-800 rounded-xl border border-dark-700 p-4">
+      <div className="font-medium text-white">{item.name}</div>
+      {/* campos relevantes */}
+      <div className="flex gap-2 mt-3">
+        <button className="flex-1 min-h-[44px] ...">Editar</button>
+        <button className="flex-1 min-h-[44px] ...">Remover</button>
+      </div>
+    </div>
+  ))}
+</div>
+
+{/* Desktop: tabela */}
+<div className="hidden sm:block overflow-x-auto">
+  <table className="w-full">...</table>
+</div>
+```
+
+**Opção B — Scroll horizontal controlado (tabelas simples, até 4 colunas):**
+
+```tsx
+<div className="overflow-x-auto">
+  <table className="w-full min-w-[480px]">...</table>
+</div>
+```
+
+### Critério de escolha
+
+| Colunas | Estratégia |
+|---------|-----------|
+| ≤ 3 | Scroll horizontal com `min-w` |
+| 4–5 | Scroll horizontal com `min-w` + ocultar colunas secundárias no mobile |
+| 6+ | Cards mobile obrigatório |
 
 ---
 
@@ -76,15 +107,32 @@ Desktop:
 
 ### Mobile
 
-- Layout em coluna única
+- Layout em **coluna única**
 - Inputs com altura confortável
 - Labels visíveis
 - Botões grandes (mín. 44px)
+
+```tsx
+{/* Sempre coluna única no mobile */}
+<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+  <div>...</div>
+  <div>...</div>
+  {/* Ocupa largura total no mobile, 2 colunas no tablet+ */}
+  <div className="sm:col-span-2">...</div>
+</div>
+```
 
 ### Desktop
 
 - Pode usar múltiplas colunas
 - Manter alinhamento visual
+
+### ❌ Proibido em formulários
+
+```tsx
+{/* ERRADO — sem breakpoint, quebra no mobile */}
+<div className="grid grid-cols-2 gap-4">
+```
 
 ---
 
@@ -96,10 +144,21 @@ Desktop:
 - Espaçamento adequado entre botões
 - Botões principais sempre visíveis no mobile
 
+```tsx
+{/* Correto */}
+<button className="min-h-[44px] px-4 py-2 ...">Salvar</button>
+
+{/* Mobile: botões empilhados */}
+<div className="flex flex-col sm:flex-row gap-2">
+  <button className="flex-1 min-h-[44px] ...">Cancelar</button>
+  <button className="flex-1 min-h-[44px] ...">Salvar</button>
+</div>
+```
+
 ### CTA crítico
 
 - Deve estar visível sem scroll quando possível
-- Exemplo: **"Novo Lead aqui"**
+- Exemplo: **"Novo Lead aqui"**, **"Novo Cliente"**
 
 ---
 
@@ -108,9 +167,19 @@ Desktop:
 ### Mobile
 
 - Usar:
-  - dropdown
+  - dropdown (recomendado)
   - accordion
   - scroll horizontal
+
+```tsx
+{/* Filtros empilham no mobile, ficam em linha no tablet+ */}
+<div className="flex flex-col sm:flex-row gap-3">
+  <div className="relative flex-1">
+    <input ... className="w-full ..." />
+  </div>
+  <select className="w-full sm:w-auto ...">...</select>
+</div>
+```
 
 ### Desktop
 
@@ -124,12 +193,20 @@ Desktop:
 
 - Deve ter prioridade visual
 - Ocupar maior parte da tela
-- Não pode ser “espremido”
+- Não pode ser "espremido"
 
 ### Regras
 
 - Não sobrepor controles nativos
 - CTA deve ficar fora do container do mapa
+- Usar `100dvh` para altura dinâmica no mobile
+
+```tsx
+{/* Altura adaptada para mobile */}
+<div style={{ minHeight: 'min(560px, calc(100dvh - 200px))' }}>
+  <InteractiveMap />
+</div>
+```
 
 ---
 
@@ -137,5 +214,53 @@ Desktop:
 
 ### Padrão obrigatório
 
-```css
-grid-cols-1 sm:grid-cols-2 lg:grid-cols-3
+```tsx
+{/* Cards e KPIs */}
+<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+```
+
+### ❌ Proibido
+
+```tsx
+{/* ERRADO — sem mobile */}
+<div className="grid grid-cols-3 gap-4">
+
+{/* ERRADO — 2 colunas no mobile */}
+<div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+```
+
+---
+
+## 📋 Checklist de validação (obrigatório em todo lote UI)
+
+Declarar explicitamente na documentação do lote:
+
+```
+[ ] Testado em 375px — sem overflow horizontal
+[ ] Testado em 768px — layout intermediário coerente
+[ ] Testado em ≥1024px — desktop preservado
+[ ] Tabelas: cards mobile OU scroll controlado
+[ ] Formulários: coluna única no mobile
+[ ] Botões: min-h-[44px] nos elementos interativos
+[ ] Filtros: acessíveis em tela pequena
+[ ] Sidebar: hamburguer funcional
+[ ] Nenhuma regra de negócio alterada
+```
+
+---
+
+## 🏷️ Lotes que implementam este padrão
+
+| Lote | Escopo |
+|------|--------|
+| L037 | Sidebar mobile, mapa, filtros do mapa |
+| L038 | CRUDs: clients, products, referrals, pre-registrations |
+
+---
+
+## 🔗 Referências
+
+- [Tailwind CSS Responsive Design](https://tailwindcss.com/docs/responsive-design)
+- [AGENTES.md — Seção 4.1](../AGENTES.md)
+- [L037 — Patch responsividade](../patches/L037_responsividade.md)
+- [L038 — Patch CRUD mobile](../patches/L038_responsividade_crud.md)

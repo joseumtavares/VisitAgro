@@ -1,7 +1,4 @@
 'use client';
-// L038: cards mobile adicionados para a tabela de 7 colunas;
-//       selects de filtro com w-full no mobile; botões com min-h-[44px].
-//       Toda lógica (MapParamsReader, FASE A/B, geoSearch, CRUD) preservada.
 import { useEffect, useState, useCallback, Suspense } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSearchParams } from 'next/navigation';
@@ -154,6 +151,7 @@ export default function PreRegistrationsPage() {
     setForm(p => ({ ...p, [k]: v }));
 
   // ── FASE B: Callback para quando params de mapa chegam ────
+  // Chamado pelo MapParamsReader quando a URL tem ?lat=...&lng=...
   const handleMapParams = useCallback((lat: number, lng: number, mapsLink: string) => {
     setEditing(null);
     setForm({
@@ -169,7 +167,9 @@ export default function PreRegistrationsPage() {
   }, []);
 
   // ── FASE A: Callback para edição via popup do mapa ────────
+  // Chamado pelo MapParamsReader quando a URL tem ?edit=<id>
   const handleEditRequest = useCallback((id: string) => {
+    // Aguarda os leads serem carregados antes de abrir
     const tryOpen = (retries = 0) => {
       setLeads(current => {
         const found = current.find(l => l.id === id);
@@ -184,7 +184,7 @@ export default function PreRegistrationsPage() {
     tryOpen();
   }, [openEdit]);
 
-  // ── GPS via Nominatim ──────────────────────────────────────
+  // ── GPS via Nominatim (same pattern as clients/page.tsx) ──
 
   const geoSearch = async (query: string) => {
     if (!query || query.length < 3) return;
@@ -311,25 +311,25 @@ export default function PreRegistrationsPage() {
             <h1 className="text-2xl font-bold text-white">Pré-cadastros / Leads</h1>
             <p className="text-dark-400 text-sm mt-1">{leads.length} registros</p>
           </div>
-          {/* L038: botões com min-h-[44px] */}
           <div className="flex items-center gap-2">
+            {/* Botão de acesso rápido ao mapa */}
             <a
               href="/dashboard/map"
-              className="flex items-center gap-2 bg-dark-700 hover:bg-dark-600 text-dark-300 hover:text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors border border-dark-600 min-h-[44px]"
+              className="flex items-center gap-2 bg-dark-700 hover:bg-dark-600 text-dark-300 hover:text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors border border-dark-600"
             >
               <MapPin className="w-4 h-4" />
               Ver no mapa
             </a>
             <button
               onClick={openNew}
-              className="flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors min-h-[44px]"
+              className="flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
             >
               <Plus className="w-4 h-4" />Novo Lead
             </button>
           </div>
         </div>
 
-        {/* Filtros — L038: selects com w-full no mobile */}
+        {/* Filters */}
         <div className="flex flex-col sm:flex-row gap-3">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-2.5 w-4 h-4 text-dark-500" />
@@ -340,11 +340,10 @@ export default function PreRegistrationsPage() {
               className="w-full bg-dark-800 border border-dark-700 rounded-lg py-2 pl-9 pr-4 text-white text-sm outline-none focus:ring-2 focus:ring-primary-500"
             />
           </div>
-          {/* L038: w-full sm:w-auto para não quebrar no mobile */}
           <select
             value={filterStatus}
             onChange={e => setFilterStatus(e.target.value as any)}
-            className="w-full sm:w-auto bg-dark-800 border border-dark-700 rounded-lg px-3 py-2 text-white text-sm outline-none focus:ring-2 focus:ring-primary-500"
+            className="bg-dark-800 border border-dark-700 rounded-lg px-3 py-2 text-white text-sm outline-none focus:ring-2 focus:ring-primary-500"
           >
             <option value="todos">Todos os status</option>
             {(Object.keys(STATUS_LABELS) as PreRegistrationStatus[]).map(s => (
@@ -354,7 +353,7 @@ export default function PreRegistrationsPage() {
           <select
             value={filterSource}
             onChange={e => setFilterSource(e.target.value)}
-            className="w-full sm:w-auto bg-dark-800 border border-dark-700 rounded-lg px-3 py-2 text-white text-sm outline-none focus:ring-2 focus:ring-primary-500"
+            className="bg-dark-800 border border-dark-700 rounded-lg px-3 py-2 text-white text-sm outline-none focus:ring-2 focus:ring-primary-500"
           >
             <option value="todos">Todas as origens</option>
             {Object.entries(SOURCE_LABELS).map(([k, v]) => (
@@ -363,7 +362,7 @@ export default function PreRegistrationsPage() {
           </select>
         </div>
 
-        {/* Lista */}
+        {/* Table */}
         {loading ? (
           <div className="text-center py-12 text-dark-400">Carregando...</div>
         ) : filtered.length === 0 ? (
@@ -374,179 +373,99 @@ export default function PreRegistrationsPage() {
             </button>
           </div>
         ) : (
-          <>
-            {/* L038: Cards mobile — visíveis apenas abaixo de sm (7 colunas = cards obrigatório) */}
-            <div className="sm:hidden space-y-3">
-              {filtered.map(lead => (
-                <div key={lead.id} className="bg-dark-800 rounded-xl border border-dark-700 p-4 space-y-3">
-                  {/* Nome + status */}
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <div className="text-white font-medium text-sm">{lead.name}</div>
-                      <div className="text-dark-500 text-xs mt-0.5">
-                        {lead.created_at ? new Date(lead.created_at).toLocaleDateString('pt-BR') : '—'}
-                      </div>
-                    </div>
-                    <span className={`inline-flex shrink-0 px-2 py-0.5 rounded-full text-xs font-medium border ${STATUS_BADGE[lead.status]}`}>
-                      {STATUS_LABELS[lead.status]}
-                    </span>
-                  </div>
-
-                  {/* Contato */}
-                  {(lead.tel || lead.email) && (
-                    <div className="space-y-0.5">
-                      {lead.tel && (
-                        <a href={`tel:${lead.tel}`} className="flex items-center gap-1 text-xs text-dark-300 hover:text-white">
-                          <Phone className="w-3 h-3 shrink-0" />{lead.tel}
-                        </a>
-                      )}
-                      {lead.email && (
-                        <a href={`mailto:${lead.email}`} className="flex items-center gap-1 text-xs text-dark-300 hover:text-white truncate">
-                          <Mail className="w-3 h-3 shrink-0" />{lead.email}
-                        </a>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Origem + Indicador + Interesse */}
-                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-dark-400">
-                    <span>{SOURCE_LABELS[lead.source ?? ''] ?? lead.source ?? '—'}</span>
-                    {lead.referral_id && (
-                      <span className="flex items-center gap-1">
-                        <UserCheck className="w-3 h-3" />{refName(lead.referral_id)}
-                      </span>
-                    )}
-                    {lead.interest && (
-                      <span className="text-dark-500 truncate max-w-[140px]">{lead.interest}</span>
-                    )}
-                  </div>
-
-                  {/* Localização */}
-                  {(lead.maps_link || (lead.lat && lead.lng)) && (
-                    <a
-                      href={lead.maps_link ?? `https://www.google.com/maps?q=${lead.lat},${lead.lng}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300"
-                    >
-                      <MapPin className="w-3 h-3" />Ver no mapa<ExternalLink className="w-3 h-3" />
-                    </a>
-                  )}
-
-                  {/* L038: botões de ação com min-h-[44px] */}
-                  <div className="flex gap-2 pt-1">
-                    <button
-                      onClick={() => openEdit(lead)}
-                      className="flex-1 flex items-center justify-center gap-1 min-h-[44px] bg-dark-700 hover:bg-dark-600 text-white text-xs rounded-lg transition-colors"
-                    >
-                      <Pencil className="w-3.5 h-3.5" />Editar
-                    </button>
-                    <button
-                      onClick={() => remove(lead.id)}
-                      className="flex-1 flex items-center justify-center gap-1 min-h-[44px] bg-dark-700 hover:bg-red-900/40 text-dark-400 hover:text-red-400 text-xs rounded-lg transition-colors"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />Remover
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* L038: Tabela desktop — oculta no mobile */}
-            <div className="hidden sm:block bg-dark-800 rounded-xl border border-dark-700 overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b border-dark-700 text-dark-400 text-xs uppercase">
-                      <th className="text-left px-4 py-3">Nome</th>
-                      <th className="text-left px-4 py-3">Status</th>
-                      <th className="text-left px-4 py-3">Contato</th>
-                      <th className="text-left px-4 py-3">Origem / Indicador</th>
-                      <th className="text-left px-4 py-3">Interesse</th>
-                      <th className="text-left px-4 py-3">Localização</th>
-                      <th className="text-right px-4 py-3">Ações</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-dark-700">
-                    {filtered.map(lead => (
-                      <tr key={lead.id} className="hover:bg-dark-700/30 transition-colors">
-                        <td className="px-4 py-3">
-                          <div className="text-white font-medium text-sm">{lead.name}</div>
-                          <div className="text-dark-500 text-xs mt-0.5">
-                            {lead.created_at ? new Date(lead.created_at).toLocaleDateString('pt-BR') : '—'}
-                          </div>
-                        </td>
-                        <td className="px-4 py-3">
-                          <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium border ${STATUS_BADGE[lead.status]}`}>
-                            {STATUS_LABELS[lead.status]}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3">
-                          <div className="space-y-0.5">
-                            {lead.tel && (
-                              <a href={`tel:${lead.tel}`} className="flex items-center gap-1 text-xs text-dark-300 hover:text-white">
-                                <Phone className="w-3 h-3" />{lead.tel}
-                              </a>
-                            )}
-                            {lead.email && (
-                              <a href={`mailto:${lead.email}`} className="flex items-center gap-1 text-xs text-dark-300 hover:text-white truncate max-w-[160px]">
-                                <Mail className="w-3 h-3" />{lead.email}
-                              </a>
-                            )}
-                            {!lead.tel && !lead.email && <span className="text-dark-600 text-xs">—</span>}
-                          </div>
-                        </td>
-                        <td className="px-4 py-3">
-                          <div className="text-xs text-dark-300">{SOURCE_LABELS[lead.source ?? ''] ?? lead.source ?? '—'}</div>
-                          {lead.referral_id && (
-                            <div className="flex items-center gap-1 text-xs text-dark-400 mt-0.5">
-                              <UserCheck className="w-3 h-3" />{refName(lead.referral_id)}
-                            </div>
-                          )}
-                        </td>
-                        <td className="px-4 py-3">
-                          <div className="text-xs text-dark-300 max-w-[120px] truncate">{lead.interest || '—'}</div>
-                        </td>
-                        <td className="px-4 py-3">
-                          {(lead.maps_link || (lead.lat && lead.lng)) ? (
-                            <a
-                              href={lead.maps_link ?? `https://www.google.com/maps?q=${lead.lat},${lead.lng}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300"
-                            >
-                              <MapPin className="w-3 h-3" />Ver no mapa<ExternalLink className="w-3 h-3" />
+          <div className="bg-dark-800 rounded-xl border border-dark-700 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-dark-700 text-dark-400 text-xs uppercase">
+                    <th className="text-left px-4 py-3">Nome</th>
+                    <th className="text-left px-4 py-3">Status</th>
+                    <th className="text-left px-4 py-3">Contato</th>
+                    <th className="text-left px-4 py-3">Origem / Indicador</th>
+                    <th className="text-left px-4 py-3">Interesse</th>
+                    <th className="text-left px-4 py-3">Localização</th>
+                    <th className="text-right px-4 py-3">Ações</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-dark-700">
+                  {filtered.map(lead => (
+                    <tr key={lead.id} className="hover:bg-dark-700/30 transition-colors">
+                      <td className="px-4 py-3">
+                        <div className="text-white font-medium text-sm">{lead.name}</div>
+                        <div className="text-dark-500 text-xs mt-0.5">
+                          {lead.created_at ? new Date(lead.created_at).toLocaleDateString('pt-BR') : '—'}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium border ${STATUS_BADGE[lead.status]}`}>
+                          {STATUS_LABELS[lead.status]}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="space-y-0.5">
+                          {lead.tel && (
+                            <a href={`tel:${lead.tel}`} className="flex items-center gap-1 text-xs text-dark-300 hover:text-white">
+                              <Phone className="w-3 h-3" />{lead.tel}
                             </a>
-                          ) : (
-                            <span className="text-dark-600 text-xs">—</span>
                           )}
-                          {lead.point_reference && (
-                            <div className="text-xs text-dark-500 mt-0.5 max-w-[120px] truncate">{lead.point_reference}</div>
+                          {lead.email && (
+                            <a href={`mailto:${lead.email}`} className="flex items-center gap-1 text-xs text-dark-300 hover:text-white truncate max-w-[160px]">
+                              <Mail className="w-3 h-3" />{lead.email}
+                            </a>
                           )}
-                        </td>
-                        <td className="px-4 py-3">
-                          <div className="flex items-center justify-end gap-2">
-                            <button
-                              onClick={() => openEdit(lead)}
-                              className="text-dark-400 hover:text-white p-1.5 rounded hover:bg-dark-700 transition-colors"
-                            >
-                              <Pencil className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={() => remove(lead.id)}
-                              className="text-dark-400 hover:text-red-400 p-1.5 rounded hover:bg-dark-700 transition-colors"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
+                          {!lead.tel && !lead.email && <span className="text-dark-600 text-xs">—</span>}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="text-xs text-dark-300">{SOURCE_LABELS[lead.source ?? ''] ?? lead.source ?? '—'}</div>
+                        {lead.referral_id && (
+                          <div className="flex items-center gap-1 text-xs text-dark-400 mt-0.5">
+                            <UserCheck className="w-3 h-3" />{refName(lead.referral_id)}
                           </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="text-xs text-dark-300 max-w-[120px] truncate">{lead.interest || '—'}</div>
+                      </td>
+                      <td className="px-4 py-3">
+                        {(lead.maps_link || (lead.lat && lead.lng)) ? (
+                          <a
+                            href={lead.maps_link ?? `https://www.google.com/maps?q=${lead.lat},${lead.lng}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300"
+                          >
+                            <MapPin className="w-3 h-3" />Ver no mapa<ExternalLink className="w-3 h-3" />
+                          </a>
+                        ) : (
+                          <span className="text-dark-600 text-xs">—</span>
+                        )}
+                        {lead.point_reference && (
+                          <div className="text-xs text-dark-500 mt-0.5 max-w-[120px] truncate">{lead.point_reference}</div>
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            onClick={() => openEdit(lead)}
+                            className="text-dark-400 hover:text-white p-1.5 rounded hover:bg-dark-700 transition-colors"
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => remove(lead.id)}
+                            className="text-dark-400 hover:text-red-400 p-1.5 rounded hover:bg-dark-700 transition-colors"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
-          </>
+          </div>
         )}
       </div>
 
@@ -560,8 +479,7 @@ export default function PreRegistrationsPage() {
               <h2 className="text-white font-semibold text-lg">
                 {editing ? 'Editar Lead' : 'Novo Lead'}
               </h2>
-              {/* L038: área de toque adequada */}
-              <button onClick={() => setShowModal(false)} className="text-dark-400 hover:text-white text-xl min-w-[44px] min-h-[44px] flex items-center justify-center">✕</button>
+              <button onClick={() => setShowModal(false)} className="text-dark-400 hover:text-white text-xl">✕</button>
             </div>
 
             {/* Form */}
@@ -578,7 +496,6 @@ export default function PreRegistrationsPage() {
                 </div>
               )}
 
-              {/* Formulário — grid-cols-1 sm:grid-cols-2 já estava correto, preservado */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 
                 {/* Nome */}
@@ -685,12 +602,11 @@ export default function PreRegistrationsPage() {
                         }
                       }}
                     />
-                    {/* L038: min-h-[44px] nos botões do formulário */}
                     <button
                       type="button"
                       disabled={geoLoading}
                       onClick={() => geoSearch((document.getElementById('pre-geo-search-input') as HTMLInputElement)?.value ?? '')}
-                      className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium disabled:opacity-50 whitespace-nowrap min-h-[44px]"
+                      className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium disabled:opacity-50 whitespace-nowrap"
                     >
                       {geoLoading ? '⏳' : '📍 Buscar'}
                     </button>
@@ -699,7 +615,7 @@ export default function PreRegistrationsPage() {
                       disabled={geoLoading}
                       onClick={useCurrentGps}
                       title="Usar minha localização atual"
-                      className="px-3 py-2 bg-dark-700 hover:bg-dark-600 text-white rounded-lg text-sm disabled:opacity-50 min-h-[44px]"
+                      className="px-3 py-2 bg-dark-700 hover:bg-dark-600 text-white rounded-lg text-sm disabled:opacity-50"
                     >
                       <Navigation className="w-4 h-4" />
                     </button>
@@ -779,15 +695,15 @@ export default function PreRegistrationsPage() {
               </div>
             </div>
 
-            {/* Modal footer — L038: min-h-[44px] + empilhamento no mobile */}
-            <div className="p-6 border-t border-dark-700 flex flex-col sm:flex-row gap-3 justify-end sticky bottom-0 bg-dark-800">
-              <button onClick={() => setShowModal(false)} className="px-4 py-2 text-dark-400 hover:text-white text-sm min-h-[44px]">
+            {/* Modal footer */}
+            <div className="p-6 border-t border-dark-700 flex gap-3 justify-end sticky bottom-0 bg-dark-800">
+              <button onClick={() => setShowModal(false)} className="px-4 py-2 text-dark-400 hover:text-white text-sm">
                 Cancelar
               </button>
               <button
                 onClick={save}
                 disabled={saving}
-                className="px-6 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg text-sm font-medium disabled:opacity-50 min-h-[44px]"
+                className="px-6 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg text-sm font-medium disabled:opacity-50"
               >
                 {saving ? 'Salvando...' : editing ? 'Salvar alterações' : 'Cadastrar'}
               </button>

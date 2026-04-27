@@ -1,6 +1,6 @@
 # 🌱 VisitAgro
 
-> **Versão atual:** `0.9.4` — **14/04/2026**  
+> **Versão atual:** `0.9.7` — **27/04/2026**  
 > **Status:** ✅ **Estável para produção** *(correções críticas aplicadas)*
 
 <p align="center">

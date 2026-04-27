@@ -1,6 +1,6 @@
 {
-  "name": "visitagropro",
-  "version": "0.9.4",
+  "name": "visitagro",
+  "version": "0.9.7",
   "private": true,
   "scripts": {
     "dev": "next dev",

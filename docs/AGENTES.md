@@ -334,6 +334,32 @@ Uma entrega só pode ser considerada pronta para integração quando:
 
 Se qualquer um desses pontos falhar, a entrega deve ser tratada como **incompleta**.
 
+## 📌 Regras obrigatórias
+
+1. Seguir docs/padrao_de_comentarios.md
+2. Sempre aplicar:
+   - filtro por workspace
+   - filtro deleted_at IS NULL
+3. Ao usar getAdmin():
+   - documentar com CRITICAL
+4. Sempre incluir AI-CONTEXT e AI-CONTRACT quando relevante
+5. Documentar regras de negócio
+
+---
+
+## 🚨 Validação automática
+
+Antes de finalizar código:
+
+- Verificar comentários obrigatórios
+- Validar presença de CRITICAL em riscos
+- Garantir consistência de retorno (AI-CONTRACT)
+
+---
+
+## 🔁 Fluxo
+
+Agente gera código → Lint → Correção automática → Entrega
 ---
 
 ## 13. Regra final

@@ -1,0 +1,19 @@
+{
+  "lote_id": "L040.1",
+  "slug": "controle_km",
+  "titulo": "Controle diário de KM dos representantes",
+  "estado": "aberto",
+  "origem": "solicitação humana",
+  "proximo_agente": "Agente 02 — Mapa de Impacto Técnico",
+  "migration_sql": true,
+  "atualizacao_documental": true,
+  "frontend": true,
+  "arquivos_sensiveis": [
+    "middleware.ts",
+    "src/lib/supabaseAdmin.ts",
+    "src/lib/apiFetch.ts",
+    "src/store/authStore.ts",
+    "src/types/index.ts",
+    "src/components/layout/DashboardShell.tsx"
+  ]
+}

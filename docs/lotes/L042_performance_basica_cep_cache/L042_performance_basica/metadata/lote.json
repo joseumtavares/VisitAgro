@@ -1,0 +1,14 @@
+{
+  "lote_id": "L042",
+  "slug": "performance_basica",
+  "titulo": "Cache seguro de CEP e revisão de performance básica",
+  "estado": "bloqueado",
+  "origem": "solicitação humana",
+  "proximo_agente": "Agente 02 — Diagnóstico Técnico de Desbloqueio",
+  "migration_sql": false,
+  "atualizacao_documental": true,
+  "frontend": false,
+  "arquivos_sensiveis": [
+    "src/lib/supabaseAdmin.ts"
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "lote_id": "L043",
+  "slug": "cadastro_ambientes_cliente",
+  "titulo": "Cadastro de ambientes vinculados ao cliente",
+  "estado": "aberto",
+  "origem": "solicitação humana",
+  "proximo_agente": "Agente 02 — Mapa de impacto técnico",
+  "migration_sql": true,
+  "atualizacao_documental": true,
+  "frontend": true,
+  "arquivos_sensiveis": [
+    "src/types/index.ts",
+    "src/app/api/orders/route.ts",
+    "src/app/api/orders/[id]/route.ts",
+    "src/app/dashboard/sales/page.tsx",
+    "src/app/dashboard/clients/page.tsx"
+  ]
+}

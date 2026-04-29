@@ -1,0 +1,15 @@
+{
+  "lote_id": "L044",
+  "slug": "portabilidade_multi_cloud",
+  "titulo": "Portabilidade multi-cloud com Docker standalone e configuração centralizada",
+  "estado": "aberto",
+  "origem": "solicitação humana / débito técnico de infraestrutura",
+  "proximo_agente": "Agente 02 — Executor de Patch Multi-Cloud",
+  "migration_sql": false,
+  "atualizacao_documental": true,
+  "frontend": false,
+  "arquivos_sensiveis": [
+    "next.config.mjs",
+    ".env.example"
+  ]
+}

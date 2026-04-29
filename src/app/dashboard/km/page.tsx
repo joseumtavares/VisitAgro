@@ -6,7 +6,7 @@
 //   - mobile (<768px): cards individuais, formulário coluna única, botões min-h-[44px]
 //   - desktop (≥1024px): tabela completa, sidebar funcional
 //   - sem overflow horizontal em 375px
-//
+// 
 // AI-RULE: Filtro por representante visível apenas para admin/manager.
 //          Representative sempre vê apenas seus próprios registros (filtro na API).
 // DEPENDE DE: apiFetch (src/lib/apiFetch.ts) para requisições autenticadas.

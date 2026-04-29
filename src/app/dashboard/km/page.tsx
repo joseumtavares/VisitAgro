@@ -15,7 +15,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Plus, Edit2, Trash2, X, Save, Loader2, Car } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
-import apiFetch from '@/lib/apiFetch';
+import { apiFetch } from '@/lib/apiFetch';
 import type { KmLog, KmLogCreatePayload, KmLogUpdatePayload } from '@/types';
 
 // ---------------------------------------------------------------------------
